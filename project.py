@@ -29,12 +29,13 @@ def createTALocations(locations, taCount):
 def createGraph(locationNames, taLocations, numLocations, taCount, num_neighbors, volatility):
     G = nx.connected_watts_strogatz_graph(numLocations, num_neighbors, volatility)
     mapping = dict(zip(G.nodes(), locationNames))
+    mapping2 = dict(zip(locationNames, G.nodes()))
     G = nx.relabel_nodes(G, mapping)
     for edge in G.edges():
         u = edge[0]
         v = edge[1]
         G[u][v]['weight'] = random.randint(1, 10)
-    return G
+    return G, mapping2
 
 def drawGraph(G):
     #nx.draw(G, with_labels=True, font_weight='bold')
@@ -48,12 +49,19 @@ def do_shortest_paths(G):
     r = nx.shortest_path(G)
     return r
 
+def graph_to_adjacency(G, mapping):
+    edges = G.edges()
+    pass
+    
 if __name__ == "__main__":
     num_loc = 20
     num_ta = 10
+    num_neighbors = 5
+    volatility = 1
+
     loc = createLocationNames(num_loc)
     ta_loc = createTALocations(loc, num_ta)
-    G = createGraph(loc, ta_loc, num_loc, num_ta, 5, 1)
+    G, mapping = createGraph(loc, ta_loc, num_loc, num_ta, num_neighbors, volatility)
     ret = do_shortest_paths(G)
     print(ret)
     drawGraph(G)

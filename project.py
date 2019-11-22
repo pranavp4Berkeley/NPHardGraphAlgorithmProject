@@ -36,8 +36,14 @@ def drawGraph(G):
     nx.draw(G, with_labels=True, font_weight='bold')
     plt.show()
 
+def do_shortest_paths(G):
+    r = nx.shortest_path(G)
+    return r
+
 if __name__ == "__main__":
     loc = createLocationNames(10)
     ta_loc = createTALocations(loc, 5)
     G = createGraph(loc, ta_loc, 10, 5)
+    ret = do_shortest_paths(G)
     drawGraph(G)
+    print(ret)

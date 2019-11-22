@@ -30,6 +30,10 @@ def createGraph(locationNames, taLocations, numLocations, taCount, num_neighbors
     G = nx.connected_watts_strogatz_graph(numLocations, num_neighbors, volatility)
     mapping = dict(zip(G.nodes(), locationNames))
     G = nx.relabel_nodes(G, mapping)
+    for edge in G.edges():
+        u = edge[0]
+        v = edge[1]
+        G[u][v]['weight'] = random.randint(1, 10)
     return G
 
 def drawGraph(G):

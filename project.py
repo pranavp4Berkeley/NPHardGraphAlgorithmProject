@@ -29,7 +29,11 @@ def createTALocations(locations, taCount):
 
 def createGraph(locationNames, taLocations, numLocations, taCount):
     G = nx.Graph()
-    G.add_nodes_from(locationNames)
+    #G.add_nodes_from(locationNames)
+
+    G = nx.connected_watts_strogatz_graph(N, 5, 1)
+    mapping = dict(zip(G.nodes(), locationNames))
+    G = nx.relabel_nodes(G, mapping)
     return G
 
 def drawGraph(G):

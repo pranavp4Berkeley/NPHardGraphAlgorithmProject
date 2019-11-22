@@ -9,8 +9,8 @@ import random
 #     a. we need to ensure connectedness
 #         i. we need to make sure that there is a spanning tree and then we can add to it as necessary 
 #     b. we need to ensure triangle inequality is satisfied
-#         ii. we need to find the shortest paths from each vertex and if the shortest path from
-#             it to another vertex is not a single line, then we have to add an additional line
+#         ii. we need to find the shortest paths from each vertex to all other vertices
+#             1) If there is an edge from that vertex to the other vertex, we check if it satisfies the triangle inequality with the shortest path using Flloyd Warshall
 
 def createLocationNames(locationCount):
     locationNames = set()
@@ -24,5 +24,4 @@ def createTALocations(locations, taCount):
         res = taLocations.add(''.join(random.choices(string.ascii_uppercase + string.digits, k = N)))
     return list(taLocations)
 
-def createGraph(locationNames, taLocations, numLocations, taCount):
-    pass
+print(createLocationNames(100))

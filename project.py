@@ -1,6 +1,7 @@
 import string 
 import networkx as nx
 import random
+N = 10
 
 # 1. Create a set of location names using a location count
 # 2. Create a set of locations that are the locations for the TAs
@@ -21,7 +22,10 @@ def createLocationNames(locationCount):
 def createTALocations(locations, taCount):
     taLocations = set()
     while len(taLocations) < taCount:
-        res = taLocations.add(''.join(random.choices(string.ascii_uppercase + string.digits, k = N)))
+        taLocations.add(random.choice(locations))
     return list(taLocations)
 
-print(createLocationNames(100))
+locations = createLocationNames(10)
+tas = createTALocations(locations, 5)
+print(locations)
+print(tas)

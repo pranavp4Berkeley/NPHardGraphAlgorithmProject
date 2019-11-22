@@ -49,11 +49,12 @@ def do_shortest_paths(G):
     return r
 
 def adjust_edge_weights(G):
-    for edge in G.edges(data='weight'):
+    for edge in G.edges.data():
         u = edge[0]
         v = edge[1]
-        weight = edge[2]
-        shortest_path = nx.shortest_path_length(G, source=u, target=v);
+        info = edge[2]
+        weight = info.get('weight', 0)
+        shortest_path = nx.shortest_path_length(G, source=u, target=v)
         if (weight > shortest_path):
             weight = shortest_path - 1
         G[u][v]['weight'] = weight
@@ -70,8 +71,8 @@ def graph_to_adjacency(G, mapping, num_locations):
         num_of_in = mapping[in_vert]
         num_of_out = mapping[out_vert]
 
-        adj_mat[num_of_out][num_of_in] = info.get("weight", 0)
-        adj_mat[num_of_in][num_of_out] = info.get("weight", 0)
+        adj_mat[num_of_out][num_of_in] = info.get('weight', 0)
+        adj_mat[num_of_in][num_of_out] = info.get('weight', 0)
 
     return adj_mat
 
@@ -113,6 +114,6 @@ if __name__ == "__main__":
     print(final_str)
     # ret = do_shortest_paths(G)
     adjust_edge_weights(G)
-    
+
 
     drawGraph(G)

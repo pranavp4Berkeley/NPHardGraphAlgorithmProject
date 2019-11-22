@@ -1,5 +1,6 @@
 import string
 import networkx as nx
+import matplotlib.pyplot as plt
 import random
 
 # 1. Create a set of location names using a location count
@@ -10,10 +11,10 @@ import random
 #         i. we need to make sure that there is a spanning tree and then we can add to it as necessary
 #     b. we need to ensure triangle inequality is satisfied
 #         ii. we need to find the shortest paths from each vertex to all other vertices
-#             1) If there is an edge from that vertex to the other vertex, we check if it satisfies the triangle inequality with the shortest path using Flloyd Warshall
+#             1) If there is an edge from that vertex to the other vertex, we check if it satisfies the triangle inequality with the shortest path using Floyd Warshall
 
-N = 10
 def createLocationNames(locationCount):
+    N = 10
     locationNames = set()
     while len(locationNames) < locationCount:
         res = locationNames.add(''.join(random.choices(string.ascii_uppercase + string.digits, k = N)))
@@ -25,8 +26,17 @@ def createTALocations(locations, taCount):
         taLocations.add(random.choice(locations))
     return list(taLocations)
 
-locations = createLocationNames(10)
-tas = createTALocations(locations, 5)
-
 def createGraph(locationNames, taLocations, numLocations, taCount):
-    pass
+    G = nx.Graph()
+    G.add_nodes_from(locationNames)
+    return G
+
+def drawGraph(G):
+    nx.draw(G, with_labels=True, font_weight='bold')
+    plt.show()
+
+if __name__ == "__main__":
+    loc = createLocationNames(10)
+    ta_loc = createTALocations(loc, 5)
+    G = createGraph(loc, ta_loc, 10, 5)
+    drawGraph(G)

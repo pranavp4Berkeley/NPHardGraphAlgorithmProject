@@ -2,7 +2,6 @@ import string
 import networkx as nx
 import matplotlib.pyplot as plt
 import random
-N = 10
 
 # 1. Create a set of location names using a location count
 # 2. Create a set of locations that are the locations for the TAs
@@ -15,7 +14,7 @@ N = 10
 #             1) If there is an edge from that vertex to the other vertex, we check if it satisfies the triangle inequality with the shortest path using Floyd Warshall
 
 def createLocationNames(locationCount):
-    N = 10
+    N = 5
     locationNames = set()
     while len(locationNames) < locationCount:
         res = locationNames.add(''.join(random.choices(string.ascii_uppercase + string.digits, k = N)))
@@ -27,11 +26,8 @@ def createTALocations(locations, taCount):
         taLocations.add(random.choice(locations))
     return list(taLocations)
 
-def createGraph(locationNames, taLocations, numLocations, taCount):
-    G = nx.Graph()
-    #G.add_nodes_from(locationNames)
-
-    G = nx.connected_watts_strogatz_graph(N, 5, 1)
+def createGraph(locationNames, taLocations, numLocations, taCount, num_neighbors, volatility):
+    G = nx.connected_watts_strogatz_graph(numLocations, num_neighbors, volatility)
     mapping = dict(zip(G.nodes(), locationNames))
     G = nx.relabel_nodes(G, mapping)
     return G
@@ -45,9 +41,11 @@ def do_shortest_paths(G):
     return r
 
 if __name__ == "__main__":
-    loc = createLocationNames(10)
-    ta_loc = createTALocations(loc, 5)
-    G = createGraph(loc, ta_loc, 10, 5)
+    num_loc = 20
+    num_ta = 10
+    loc = createLocationNames(num_loc)
+    ta_loc = createTALocations(loc, num_ta)
+    G = createGraph(loc, ta_loc, num_loc, num_ta, 5, 1)
     ret = do_shortest_paths(G)
-    drawGraph(G)
     print(ret)
+    drawGraph(G)

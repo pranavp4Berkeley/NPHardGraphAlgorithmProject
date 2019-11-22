@@ -29,6 +29,8 @@ locations = createLocationNames(10)
 tas = createTALocations(locations, 5)
 print(locations)
 print(tas)
+G = nx.Graph();
+G.add_nodes_from(locations);
 
 def createGraph(locationNames, taLocations, numLocations, taCount):
     pass

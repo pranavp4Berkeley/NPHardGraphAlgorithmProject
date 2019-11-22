@@ -49,9 +49,30 @@ def do_shortest_paths(G):
     r = nx.shortest_path(G)
     return r
 
-def graph_to_adjacency(G, mapping):
-    edges = G.edges()
-    pass
+def graph_to_adjacency(G, mapping, num_locations):
+    edges = G.edges.data()
+    adj_mat = [[0 for i in range(num_locations)] for i in range(num_locations)]
+
+    for edge in edges:
+        in_vert = edge[0]
+        out_vert = edge[1]
+        info = edge[2]
+        
+        num_of_in = mapping[in_vert]
+        num_of_out = mapping[out_vert]
+
+        adj_mat[num_of_out][num_of_in] = info.get("weight", 0)
+        adj_mat[num_of_in][num_of_out] = info.get("weight", 0)
+    
+    return adj_mat
+
+def adj_to_string(adj_mat):
+    s = ""
+    for i in range(len(adj_mat)):
+        for j in range(len(adj_mat[0])):
+            s += (str(adj_mat[i][j]) + " ") if adj_mat[i][j] else "x "
+        s += "\n"
+    return s
 
 if __name__ == "__main__":
     num_loc = 20
@@ -62,6 +83,8 @@ if __name__ == "__main__":
     loc = createLocationNames(num_loc)
     ta_loc = createTALocations(loc, num_ta)
     G, mapping = createGraph(loc, ta_loc, num_loc, num_ta, num_neighbors, volatility)
+    adj_mat = graph_to_adjacency(G, mapping, num_loc)
+    s = adj_to_string(adj_mat)
     ret = do_shortest_paths(G)
-    print(ret)
+    print(s)
     drawGraph(G)

@@ -8,7 +8,7 @@ N = 10
 # 3. Create a starting point
 # 4. Create a graph
 #     a. we need to ensure connectedness
-#         i. we need to make sure that there is a spanning tree and then we can add to it as necessary
+#         i. we need to make sure that there is a spanning tree and then we can add to it as necessary as necessary
 #     b. we need to ensure triangle inequality is satisfied
 #         ii. we need to find the shortest paths from each vertex to all other vertices
 #             1) If there is an edge from that vertex to the other vertex, we check if it satisfies the triangle inequality with the shortest path using Floyd Warshall

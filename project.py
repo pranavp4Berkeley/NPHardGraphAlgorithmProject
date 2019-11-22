@@ -30,14 +30,10 @@ locations = createLocationNames(10)
 tas = createTALocations(locations, 5)
 print(locations)
 print(tas)
-G = nx.Graph();
-G.add_nodes_from(locations);
-G = nx.petersen_graph()
-plt.subplot(121)
-nx.draw(G, with_labels=True, font_weight='bold')
-plt.subplot(122)
-nx.draw_shell(G, nlist=[range(5, 10), range(5)], with_labels=True, font_weight='bold')
-plt.show()
+
+G = nx.Graph()
+G.add_nodes_from(locations)
+print(G.number_of_nodes())
 
 def createGraph(locationNames, taLocations, numLocations, taCount):
     pass

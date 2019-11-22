@@ -28,12 +28,13 @@ def createTALocations(locations, taCount):
     return list(taLocations)
 
 def createGraph(locationNames, taLocations, numLocations, taCount):
-    G = nx.Graph()
-    #G.add_nodes_from(locationNames)
-
     G = nx.connected_watts_strogatz_graph(N, 5, 1)
     mapping = dict(zip(G.nodes(), locationNames))
     G = nx.relabel_nodes(G, mapping)
+    for edge in G.edges():
+        u = edge[0]
+        v = edge[1]
+        G[u][v]['weight'] = random.randint(1, 10)
     return G
 
 def drawGraph(G):

@@ -1,6 +1,7 @@
 import string
 import networkx as nx
 import random
+import matplotlib.pyplot as plt
 N = 10
 
 # 1. Create a set of location names using a location count
@@ -31,6 +32,12 @@ print(locations)
 print(tas)
 G = nx.Graph();
 G.add_nodes_from(locations);
+G = nx.petersen_graph()
+plt.subplot(121)
+nx.draw(G, with_labels=True, font_weight='bold')
+plt.subplot(122)
+nx.draw_shell(G, nlist=[range(5, 10), range(5)], with_labels=True, font_weight='bold')
+plt.show()
 
 def createGraph(locationNames, taLocations, numLocations, taCount):
     pass

@@ -52,7 +52,7 @@ def do_shortest_paths(G):
 def graph_to_adjacency(G, mapping):
     edges = G.edges()
     pass
-    
+
 if __name__ == "__main__":
     num_loc = 20
     num_ta = 10

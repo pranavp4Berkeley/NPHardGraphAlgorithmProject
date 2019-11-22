@@ -38,9 +38,8 @@ def createGraph(locationNames, taLocations, numLocations, taCount, num_neighbors
     return G, mapping2
 
 def drawGraph(G):
-    #nx.draw(G, with_labels=True, font_weight='bold')
-    pos = nx.get_node_attributes(G, 'pos')
-    nx.draw(G,pos)
+    pos = nx.spring_layout(G)
+    nx.draw(G, pos, with_labels=True, font_weight='bold')
     labels = nx.get_edge_attributes(G, 'weight')
     nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
     plt.show()

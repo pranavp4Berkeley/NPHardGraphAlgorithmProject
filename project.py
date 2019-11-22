@@ -2,11 +2,7 @@ import string
 import networkx as nx
 import matplotlib.pyplot as plt
 import random
-<<<<<<< HEAD
-=======
-import matplotlib.pyplot as plt
 N = 10
->>>>>>> d7fec3eb2abf8d1da1e66abe0f4992b11ea111d7
 
 # 1. Create a set of location names using a location count
 # 2. Create a set of locations that are the locations for the TAs

@@ -1,7 +1,6 @@
 import string
 import networkx as nx
 import random
-N = 10
 
 # 1. Create a set of location names using a location count
 # 2. Create a set of locations that are the locations for the TAs
@@ -13,6 +12,7 @@ N = 10
 #         ii. we need to find the shortest paths from each vertex to all other vertices
 #             1) If there is an edge from that vertex to the other vertex, we check if it satisfies the triangle inequality with the shortest path using Flloyd Warshall
 
+N = 10
 def createLocationNames(locationCount):
     locationNames = set()
     while len(locationNames) < locationCount:
@@ -27,8 +27,6 @@ def createTALocations(locations, taCount):
 
 locations = createLocationNames(10)
 tas = createTALocations(locations, 5)
-print(locations)
-print(tas)
 
 def createGraph(locationNames, taLocations, numLocations, taCount):
     pass

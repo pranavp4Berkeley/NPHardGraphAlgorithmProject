@@ -17,7 +17,7 @@ def createLocationNames(locationCount):
     N = 5
     locationNames = set()
     while len(locationNames) < locationCount:
-        res = locationNames.add(''.join(random.choices(string.ascii_uppercase + string.digits, k = N)))
+        locationNames.add(''.join(random.choices(string.ascii_uppercase + string.digits, k = N)))
     return list(locationNames)
 
 def createTALocations(locations, taCount):
@@ -26,7 +26,7 @@ def createTALocations(locations, taCount):
         taLocations.add(random.choice(locations))
     return list(taLocations)
 
-def createGraph(locationNames, taLocations, numLocations, taCount, num_neighbors, volatility):
+def createGraph(locationNames, taLocations, numLocations, num_neighbors, volatility, max_weight):
     G = nx.connected_watts_strogatz_graph(numLocations, num_neighbors, volatility)
     mapping = dict(zip(G.nodes(), locationNames))
     mapping2 = dict(zip(locationNames, G.nodes()))
@@ -34,7 +34,7 @@ def createGraph(locationNames, taLocations, numLocations, taCount, num_neighbors
     for edge in G.edges():
         u = edge[0]
         v = edge[1]
-        G[u][v]['weight'] = random.randint(1, 10)
+        G[u][v]['weight'] = random.randint(1, max_weight)
     return G, mapping2
 
 def drawGraph(G):
@@ -80,17 +80,34 @@ def adj_to_string(adj_mat):
         s += "\n"
     return s
 
+def string_entire(loc, ta, start, graph_str):
+    s = ""
+    s += str(len(loc)) + "\n"
+    s += str(len(ta)) + "\n"
+    for location in loc:
+        s += location + " "
+    s += "\n"
+    for tas in ta:
+        s += tas + " "
+    s += "\n"
+    s += start + "\n"
+    s += graph_str
+    return s
+
 if __name__ == "__main__":
-    num_loc = 20
-    num_ta = 10
-    num_neighbors = 5
+    num_loc = 15
+    num_ta = 5
+    num_neighbors = 4
     volatility = 1
+    max_weight = 9
 
     loc = createLocationNames(num_loc)
     ta_loc = createTALocations(loc, num_ta)
-    G, mapping = createGraph(loc, ta_loc, num_loc, num_ta, num_neighbors, volatility)
+    G, mapping = createGraph(loc, ta_loc, num_loc, num_neighbors, volatility, max_weight)
     adj_mat = graph_to_adjacency(G, mapping, num_loc)
     s = adj_to_string(adj_mat)
-    ret = do_shortest_paths(G)
-    print(s)
+    final_str = string_entire(loc, ta_loc, random.choice(loc), s)
+    print(final_str)
+    # ret = do_shortest_paths(G)
+
     drawGraph(G)

@@ -99,21 +99,28 @@ def string_entire(loc, ta, start, graph_str):
     return s
 
 if __name__ == "__main__":
-    num_loc = 15
+    num_loc = 7
     num_ta = 5
-    num_neighbors = 4
+    num_neighbors = 3
     volatility = 1
     max_weight = 9
 
     loc = createLocationNames(num_loc)
     ta_loc = createTALocations(loc, num_ta)
+
     G, mapping = createGraph(loc, ta_loc, num_loc, num_neighbors, volatility, max_weight)
     adj_mat = graph_to_adjacency(G, mapping, num_loc)
     s = adj_to_string(adj_mat)
     final_str = string_entire(loc, ta_loc, random.choice(loc), s)
     print(final_str)
-    # ret = do_shortest_paths(G)
+    ret = do_shortest_paths(G)
+
     adjust_edge_weights(G)
 
 
+    adj_mat = graph_to_adjacency(G, mapping, num_loc)
+    s = adj_to_string(adj_mat)
+    final_str = string_entire(loc, ta_loc, random.choice(loc), s)
+    print(final_str)
+    print(mapping)
     drawGraph(G)

@@ -37,7 +37,11 @@ def createGraph(locationNames, taLocations, numLocations, taCount, num_neighbors
     return G
 
 def drawGraph(G):
-    nx.draw(G, with_labels=True, font_weight='bold')
+    #nx.draw(G, with_labels=True, font_weight='bold')
+    pos = nx.get_node_attributes(G, 'pos')
+    nx.draw(G,pos)
+    labels = nx.get_edge_attributes(G, 'weight')
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
     plt.show()
 
 def do_shortest_paths(G):

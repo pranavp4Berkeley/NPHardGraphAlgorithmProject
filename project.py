@@ -54,7 +54,7 @@ def adjust_edge_weights(G):
         v = edge[1]
         info = edge[2]
         weight = info.get('weight', 0)
-        shortest_path = nx.shortest_path_length(G, source=u, target=v)
+        shortest_path, _ = nx.single_source_dijkstra(G, source=u, target=v, cutoff=None, weight='weight')
         if (weight > shortest_path):
             weight = shortest_path - 1
         G[u][v]['weight'] = weight

@@ -99,9 +99,9 @@ def string_entire(loc, ta, start, graph_str):
     return s
 
 if __name__ == "__main__":
-    num_loc = 7
+    num_loc = 15
     num_ta = 5
-    num_neighbors = 3
+    num_neighbors = 4
     volatility = 1
     max_weight = 9
 

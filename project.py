@@ -1,4 +1,6 @@
 import string
+import math
+from decimal import Decimal, ROUND_HALF_UP
 import networkx as nx
 import matplotlib.pyplot as plt
 import random
@@ -34,7 +36,8 @@ def createGraph(locationNames, taLocations, numLocations, num_neighbors, volatil
     for edge in G.edges():
         u = edge[0]
         v = edge[1]
-        G[u][v]['weight'] = random.randint(1, max_weight)
+        weight = Decimal(random.uniform(1, max_weight))
+        G[u][v]['weight'] = Decimal(weight.quantize(Decimal('.01'), rounding=ROUND_HALF_UP))
     return G, mapping2
 
 def drawGraph(G):
@@ -44,20 +47,31 @@ def drawGraph(G):
     nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
     plt.show()
 
-def do_shortest_paths(G):
-    r = nx.shortest_path(G)
-    return r
+def is_edge_zero(G):
+    for edge in G.edges(data="weight"):
+        if edge[2] == 0:
+            return True
+    return False
 
 def adjust_edge_weights(G):
-    for edge in G.edges.data():
-        u = edge[0]
-        v = edge[1]
-        info = edge[2]
-        weight = info.get('weight', 0)
-        shortest_path, _ = nx.single_source_dijkstra(G, source=u, target=v, cutoff=None, weight='weight')
-        if (weight > shortest_path):
-            weight = shortest_path - 1
-        G[u][v]['weight'] = weight
+    while not is_valid_triangulation(G):
+        for edge in G.edges(data="weight"):
+            u = edge[0]
+            v = edge[1]
+            weight = edge[2]
+            shortest_path_length, _ = nx.single_source_dijkstra(G, source=u, target=v, cutoff=None, weight='weight')
+            if (weight > shortest_path_length):
+                weight = shortest_path_length - 1 #random.randint(1, int(shortest_path_length-1))
+            G[u][v]['weight'] = weight
+
+def is_adj_valid(adj):
+    for i in range(len(adj)):
+        for j in range(len(adj[0])):
+            if i == j and not (adj[i][j] == 0):
+                return False
+            if not adj[i][j] == adj[j][i]:
+                return False
+    return True
 
 def graph_to_adjacency(G, mapping, num_locations):
     edges = G.edges.data()
@@ -98,29 +112,42 @@ def string_entire(loc, ta, start, graph_str):
     s += graph_str
     return s
 
+def is_valid_triangulation(G):
+    for edge in G.edges.data():
+        u = edge[0]
+        v = edge[1]
+        info = edge[2]
+        weight = info.get("weight", 0)
+        shortest_path, _ = nx.single_source_dijkstra(G, source=u, target=v, cutoff=None, weight='weight')
+        if(weight != shortest_path):
+            return False
+    return True
+
 if __name__ == "__main__":
-    num_loc = 15
+    num_loc = 100
     num_ta = 5
-    num_neighbors = 4
+    num_neighbors = 14
     volatility = 1
-    max_weight = 9
+    max_weight = 69
 
     loc = createLocationNames(num_loc)
     ta_loc = createTALocations(loc, num_ta)
 
+    # The original graph
     G, mapping = createGraph(loc, ta_loc, num_loc, num_neighbors, volatility, max_weight)
     adj_mat = graph_to_adjacency(G, mapping, num_loc)
     s = adj_to_string(adj_mat)
-    final_str = string_entire(loc, ta_loc, random.choice(loc), s)
-    print(final_str)
-    ret = do_shortest_paths(G)
+    init_str = string_entire(loc, ta_loc, random.choice(loc), s)
 
+    # the code to adjust the edge weights and then print it out
     adjust_edge_weights(G)
+    if(is_valid_triangulation(G) or not is_edge_zero(G)):
+        adj_mat = graph_to_adjacency(G, mapping, num_loc)
+        if(is_adj_valid(adj_mat)):
+            s = adj_to_string(adj_mat)
+            final_str = string_entire(loc, ta_loc, random.choice(loc), s)
+            print(final_str)
+            drawGraph(G)
+    else:
+        print("We have an invalid graph")
 
-
-    adj_mat = graph_to_adjacency(G, mapping, num_loc)
-    s = adj_to_string(adj_mat)
-    final_str = string_entire(loc, ta_loc, random.choice(loc), s)
-    print(final_str)
-    print(mapping)
-    drawGraph(G)

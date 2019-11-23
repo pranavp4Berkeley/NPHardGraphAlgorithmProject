@@ -150,4 +150,3 @@ if __name__ == "__main__":
             drawGraph(G)
     else:
         print("We have an invalid graph")
-

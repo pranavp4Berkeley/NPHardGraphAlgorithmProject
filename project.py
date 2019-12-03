@@ -139,11 +139,11 @@ def write_to_file(s, name):
     f.close()
 
 if __name__ == "__main__":
-    num_loc = 50
-    num_ta = 25
-    num_neighbors = 40
+    num_loc = 10
+    num_ta = 5
+    num_neighbors = 5
     volatility = 1
-    max_weight = 10
+    max_weight = 9
 
     loc = createLocationNames(num_loc)
     ta_loc = createTALocations(loc, num_ta)

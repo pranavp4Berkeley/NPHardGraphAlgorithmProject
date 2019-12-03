@@ -124,11 +124,11 @@ def is_valid_triangulation(G):
     return True
 
 if __name__ == "__main__":
-    num_loc = 100
+    num_loc = 10
     num_ta = 5
-    num_neighbors = 14
+    num_neighbors = 5
     volatility = 1
-    max_weight = 69
+    max_weight = 9
 
     loc = createLocationNames(num_loc)
     ta_loc = createTALocations(loc, num_ta)

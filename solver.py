@@ -4,6 +4,11 @@ sys.path.append('..')
 sys.path.append('../..')
 import argparse
 import utils
+import numpy as np
+import random
+import string
+import math
+import matplotlib.pyplot as plt
 
 from student_utils import *
 """
@@ -25,7 +30,13 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
         A dictionary mapping drop-off location to a list of homes of TAs that got off at that particular location
         NOTE: both outputs should be in terms of indices not the names of the locations themselves
     """
-    pass
+    
+    # Reformat the adjacency matrix
+    unscaled_G = adj_mat_to_graph(adjacency_matrix)
+    upscale_matrix(adjacency_matrix)
+    G = adj_mat_to_graph(adjacency_matrix)
+    drawGraph(G)
+    return 1, 2
 
 """
 ======================================================================
@@ -69,13 +80,30 @@ def solve_from_file(input_file, output_directory, params=[]):
 
     convertToFile(car_path, drop_offs, output_file, list_locations)
 
-
 def solve_all(input_directory, output_directory, params=[]):
     input_files = utils.get_files_with_extension(input_directory, 'in')
 
     for input_file in input_files:
         solve_from_file(input_file, output_directory, params=params)
 
+def drawGraph(G):
+    pos = nx.spring_layout(G)
+    nx.draw(G, pos, with_labels=True, font_weight='bold')
+    labels = nx.get_edge_attributes(G, 'weight')
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
+    plt.show()
+
+#############################
+
+def adj_mat_to_graph(adj_mat):
+    adj_mat = np.matrix(adj_mat)
+    G = nx.from_numpy_matrix(adj_mat)
+    return G
+
+def upscale_matrix(adj_mat):
+    for i in range(len(adj_mat)):
+        for j in range(len(adj_mat[0])):
+            adj_mat[i][j] *= 10 * 10
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Parsing arguments')

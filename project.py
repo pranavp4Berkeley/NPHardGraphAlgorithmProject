@@ -123,12 +123,27 @@ def is_valid_triangulation(G):
             return False
     return True
 
+def create_temp_output(loc, ta, start_loc):
+    s = ""
+    s += (start_loc) + "\n1\n"
+    s += (start_loc) + " "
+    for i in range(len(ta)):
+        if ta[i] != s:
+            s += ta[i] + " "
+    s += "\n"
+    return s
+
+def write_to_file(s, name):
+    f = open(name, "w")
+    f.write(s)
+    f.close()
+
 if __name__ == "__main__":
-    num_loc = 100
-    num_ta = 5
-    num_neighbors = 14
+    num_loc = 50
+    num_ta = 25
+    num_neighbors = 40
     volatility = 1
-    max_weight = 69
+    max_weight = 10
 
     loc = createLocationNames(num_loc)
     ta_loc = createTALocations(loc, num_ta)
@@ -137,7 +152,6 @@ if __name__ == "__main__":
     G, mapping = createGraph(loc, ta_loc, num_loc, num_neighbors, volatility, max_weight)
     adj_mat = graph_to_adjacency(G, mapping, num_loc)
     s = adj_to_string(adj_mat)
-    init_str = string_entire(loc, ta_loc, random.choice(loc), s)
 
     # the code to adjust the edge weights and then print it out
     adjust_edge_weights(G)
@@ -145,9 +159,16 @@ if __name__ == "__main__":
         adj_mat = graph_to_adjacency(G, mapping, num_loc)
         if(is_adj_valid(adj_mat)):
             s = adj_to_string(adj_mat)
-            final_str = string_entire(loc, ta_loc, random.choice(loc), s)
+            rand_loc = random.choice(loc)
+            final_str = string_entire(loc, ta_loc, rand_loc, s)
+            print("input")
             print(final_str)
+            print("output")
+            output_str = create_temp_output(loc, ta_loc, rand_loc)
+            print(output_str)
             drawGraph(G)
     else:
         print("We have an invalid graph")
+
+    print(adj_mat)
 

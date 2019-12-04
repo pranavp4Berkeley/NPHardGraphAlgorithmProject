@@ -36,8 +36,15 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     unscaled_G = adj_mat_to_graph(adjacency_matrix)
     upscale_matrix(adjacency_matrix)
     G = adj_mat_to_graph(adjacency_matrix)
-    drawGraph(G)
-    return 1, 2
+    #drawGraph(G)
+    index_to_location = dict(zip(G.nodes(), list_of_locations))
+    location_to_index = dict(zip(list_of_locations, G.nodes()))
+    G = nx.relabel_nodes(G, index_to_location)
+
+    tour, dropoff_map = metric_TSP_solver(G, starting_car_location, list_of_homes)
+    tour = [location_to_index[loc] for loc in tour]
+    dropoff_map = [location_to_index[loc] for loc in dropoff_map]
+    return tour, dropoff_map
 
 def metric_TSP_solver(G, starting_car_location, list_of_homes):
     T = nx.minimum_spanning_tree(G)

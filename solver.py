@@ -51,14 +51,14 @@ def metric_TSP_solver(G, starting_car_location, list_of_homes):
         marked[node] = True
         is_leaf = True
         for neighbor in T.neighbors(node):
-            if not marked[node]:
+            if not marked[neighbor]:
                 is_leaf = False
                 gen_dfs(neighbor)
         if not is_leaf:
             dfs_traversal.append(node)
     gen_dfs(starting_car_location)
 
-    # Saves indeces of visited locations.
+    # Saves indices of visited locations.
     visited = {}
     # List of locations represeting the car path.
     tour = dfs_traversal[:]

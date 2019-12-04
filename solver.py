@@ -33,8 +33,9 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     """
 
     # Reformat the adjacency matrix
-    unscaled_G = adj_mat_to_graph(adjacency_matrix)
-    upscale_matrix(adjacency_matrix)
+    # unscaled_G = adj_mat_to_graph(adjacency_matrix)
+    # upscale_matrix(adjacency_matrix)
+    # print(adjacency_matrix)
     G = adj_mat_to_graph(adjacency_matrix)
     #drawGraph(G)
     index_to_location = dict(zip(G.nodes(), list_of_locations))

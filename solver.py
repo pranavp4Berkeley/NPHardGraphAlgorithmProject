@@ -51,10 +51,8 @@ def metric_TSP_solver(G, starting_car_location, list_of_homes):
     T = nx.minimum_spanning_tree(G)
     # Generates a DFS call sequence.
     marked = {}
-    
     for node in G.nodes:
         marked[node] = False
-
     dfs_traversal = []
     def gen_dfs(node):
         dfs_traversal.append(node)
@@ -70,34 +68,83 @@ def metric_TSP_solver(G, starting_car_location, list_of_homes):
 
     # Saves indices of visited locations.
     visited = {}
-    # List of locations represeting the car path.
-    tour = []
+    # List of locations the car must visit.
+    locations = []
     # Maps locations to the homes of the TAs who were dropped off at the location.
     dropoff_map = {}
     for i in range(len(dfs_traversal)):
         node = dfs_traversal[i]
         if node not in visited: # Visiting a location for the first time.
             visited[node] = i
+            if node in list_of_homes: # If the node is a home, we must visit it in the final tour.
+                locations.append(node)
         else: # We have arrived at a location loop.
             start = visited[node]
             end = i + 1
             location_loop = dfs_traversal[start:end]
             drive_cost = compute_drive_cost(G, location_loop)
             dropoff_cost, dropped_homes = compute_dropoff_cost(G, location_loop, list_of_homes)
+
             # If it's better to drop all the TAs living withing the loop at the start than to drive the entire loop.
             if (dropoff_cost < drive_cost):
                 # for loc in location_loop[1:]:
                 #     tour.remove(loc)
-                # Storing for output file.
-                dropoff_map[node] = dropped_homes
-                # Removing homes of the TAs that were dropped off and creating a SUPER home.
-                # for home in dropped_homes:
-                #     list_of_homes.remove(home)
-                # list_of_homes.append(node)
+
+                # Removing homes of the TAs that were dropped off.
+                for home in dropped_homes:
+                    if home in list_of_homes: # Not sure if this is necessary.
+                        list_of_homes.remove(home)
+                    # Also removing super dropoff locations within the location loop.
+                    if home in dropoff_map:
+                        del dropoff_map[home]
+
+                dropoff_map[node] = dropped_homes # Storing for output file.
+                locations.append(node) # The final tour must include this dropoff location.
+                list_of_homes.append(node) # Classifying the dropoff location as a pseudo home.
+
             else: # Else, it's better to drive the loop. Update the index of visited location.
                 visited[node] = i
-                dropoff_map[node] = [] # Don't drop off any TA, but still visit this location.
+                for loc in location_loop:
+                    if loc in list_of_homes:
+                        locations.append(loc) # The final tour should include all homes in the location loop.
+
+    tour = find_tour(G, starting_car_location, locations)
     return tour, dropoff_map
+
+def find_tour(G, starting_car_location, locations):
+    tour = [] # Stores the path the car takes.
+    current_loc = starting_car_location
+    visited = {}
+    for loc in locations:
+        visited[loc] = False
+
+    while (has_not_visited_all_locations(visited)):
+        # Compute the shortest paths tree rooted at the current location.
+        path_lengths = nx.single_source_dijkstra_path_length(G, source=current_loc, cutoff=None, weight='weight')
+        closest_loc = None
+        closest_loc_distance = float('inf')
+        # Finding the closest location.
+        for loc in locations:
+            if not visited[loc]:
+                loc_distance = path_lengths[loc]
+                if (loc_distance < closest_loc_distance):
+                    closest_loc = loc
+                    closest_loc_distance = loc_distance
+
+        # Compute the desired shortest path and append to tour.
+        chosen_path = nx.dijkstra_path(G, source=current_loc, target=closest_loc, weight='weight')
+        tour += chosen_path[:(len(chosen_path) - 1)]
+        # Visit the closest location and update the current location.
+        visited[closest_loc] = True
+        current_loc = closest_loc
+
+    # Compute the shortest path back to the start.
+    return_path = nx.dijkstra_path(G, source=current_loc, target=starting_car_location, weight='weight')
+    tour += return_path
+    return tour
+
+def has_not_visited_all_locations(visited):
+    return False in visited.values()
 
 
 # Calculates the cost of driving the entire loop.
@@ -203,4 +250,3 @@ if __name__=="__main__":
     else:
         input_file = args.input
         solve_from_file(input_file, output_directory, params=args.params)
-

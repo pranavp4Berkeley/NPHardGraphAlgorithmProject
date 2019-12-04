@@ -84,14 +84,16 @@ def metric_TSP_solver(G, starting_car_location, list_of_homes):
             dropoff_cost, dropped_homes = compute_dropoff_cost(G, location_loop, list_of_homes)
             # If it's better to drop all the TAs living withing the loop at the start than to drive the entire loop.
             if (dropoff_cost < drive_cost):
-                for location in location_loop[1:]:
-                    tour.remove(location)
+                for loc in range(1, len(location_loop)):
+                    tour.pop(start + loc)
                 # Storing for output file.
                 dropoff_map[node] = dropped_homes
                 # Removing homes of the TAs that were dropped off and creating a SUPER home.
-                for home in dropped_homes:
-                    list_of_homes.remove(home)
-                list_of_homes.append(node)
+                # for home in dropped_homes:
+                #     list_of_homes.remove(home)
+                # list_of_homes.append(node)
+            else: # Else, it's better to drive the loop. Update the index of visited location.
+                visited[node] = i
     return tour, dropoff_map
 
 
@@ -101,6 +103,8 @@ def compute_drive_cost(G, location_loop):
     for i in range(len(location_loop) - 1):
         source = location_loop[i]
         dest = location_loop[i + 1]
+        #print(source)
+        #print(dest)
         cost += (2 / 3) * (G[source][dest]['weight'])
     return cost
 

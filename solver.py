@@ -36,7 +36,7 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     # unscaled_G = adj_mat_to_graph(adjacency_matrix)
     # upscale_matrix(adjacency_matrix)
     # print(adjacency_matrix)
-    G = adj_mat_to_graph(adjacency_matrix)
+    G, message = adjacency_matrix_to_graph(adjacency_matrix)
     #drawGraph(G)
     index_to_location = dict(zip(G.nodes(), list_of_locations))
     location_to_index = dict(zip(list_of_locations, G.nodes()))
@@ -111,7 +111,7 @@ def compute_dropoff_cost(G, location_loop, list_of_homes):
     dropped_homes = []
     for node in location_loop:
         if node in list_of_homes:
-            walk_distance, _ = nx.single_source_dijkstra(source=source, target=node, cutoff=None, weight='weight')
+            walk_distance, _ = nx.single_source_dijkstra(G, source=source, target=node, cutoff=None, weight='weight')
             cost += walk_distance
             dropped_homes.append(node)
     return cost, dropped_homes

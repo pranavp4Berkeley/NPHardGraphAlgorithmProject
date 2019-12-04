@@ -9,6 +9,7 @@ import random
 import string
 import math
 import matplotlib.pyplot as plt
+import networkx as nx
 
 from student_utils import *
 """
@@ -30,13 +31,83 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
         A dictionary mapping drop-off location to a list of homes of TAs that got off at that particular location
         NOTE: both outputs should be in terms of indices not the names of the locations themselves
     """
-    
+
     # Reformat the adjacency matrix
     unscaled_G = adj_mat_to_graph(adjacency_matrix)
     upscale_matrix(adjacency_matrix)
     G = adj_mat_to_graph(adjacency_matrix)
     drawGraph(G)
     return 1, 2
+
+def metric_TSP_solver(G, starting_car_location, list_of_homes):
+    T = nx.minimum_spanning_tree(G)
+    # Generates a DFS call sequence.
+    marked = {}
+    for node in G.nodes:
+        marked[node] = False
+    dfs_traversal = []
+    def gen_dfs(node):
+        dfs_traversal.append(node)
+        marked[node] = True
+        is_leaf = True
+        for neighbor in T.neighbors(node):
+            if not marked[node]:
+                is_leaf = False
+                gen_dfs(neighbor)
+        if not is_leaf:
+            dfs_traversal.append(node)
+    gen_dfs(starting_car_location)
+
+    # Saves indeces of visited locations.
+    visited = {}
+    # List of locations represeting the car path.
+    tour = dfs_traversal[:]
+    # Maps locations to the homes of the TAs who were dropped off at the location.
+    dropoff_map = {}
+    for i in range(len(dfs_traversal)):
+        node = dfs_traversal[i]
+        if node not in visited: # Visiting a location for the first time.
+            visited[node] = i
+        else: # We have arrived at a location loop.
+            start = visited[node]
+            end = i + 1
+            location_loop = dfs_traversal[start:end]
+            drive_cost = compute_drive_cost(G, location_loop)
+            dropoff_cost, dropped_homes = compute_dropoff_cost(G, location_loop, list_of_homes)
+            # If it's better to drop all the TAs living withing the loop at the start than to drive the entire loop.
+            if (dropoff_cost < drive_cost):
+                for location in location_loop[1:]:
+                    tour.remove(location)
+                # Storing for output file.
+                dropoff_map[node] = dropped_homes
+                # Removing homes of the TAs that were dropped off and creating a SUPER home.
+                for home in dropped_homes:
+                    list_of_homes.remove(home)
+                list_of_homes.append(node)
+    return tour, dropoff_map
+
+
+# Calculates the cost of driving the entire loop.
+def compute_drive_cost(G, location_loop):
+    cost = 0
+    for i in range(len(location_loop) - 1):
+        source = location_loop[i]
+        dest = location_loop[i + 1]
+        cost += (2 / 3) * (G[source][dest]['weight'])
+    return cost
+
+# Calculates the cost of dropping off all TAs who live within the loop at the start.
+def compute_dropoff_cost(G, location_loop, list_of_homes):
+    cost = 0
+    source = location_loop[0]
+    dropped_homes = []
+    for node in location_loop:
+        if node in list_of_homes:
+            walk_distance, _ = nx.single_source_dijkstra(source=source, target=node, cutoff=None, weight='weight')
+            cost += walk_distance
+            dropped_homes.append(node)
+    return cost, dropped_homes
+
 
 """
 ======================================================================

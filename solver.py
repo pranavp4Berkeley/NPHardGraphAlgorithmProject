@@ -44,11 +44,14 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
 
     tour, dropoff_map = metric_TSP_solver(G, starting_car_location, list_of_homes)
     tour = [location_to_index[loc] for loc in tour]
-    dropoff_map = [location_to_index[loc] for loc in dropoff_map]
-    return tour, dropoff_map
+    indexed_dropoff_map = {}
+    for loc in dropoff_map:
+        indexed_dropoff_map[location_to_index[loc]] = [location_to_index[home] for home in dropoff_map[loc]]
+    return tour, indexed_dropoff_map
 
 def metric_TSP_solver(G, starting_car_location, list_of_homes):
     T = nx.minimum_spanning_tree(G)
+
     # Generates a DFS call sequence.
     marked = {}
     for node in G.nodes:
@@ -57,14 +60,15 @@ def metric_TSP_solver(G, starting_car_location, list_of_homes):
     def gen_dfs(node):
         dfs_traversal.append(node)
         marked[node] = True
-        is_leaf = True
         for neighbor in T.neighbors(node):
             if not marked[neighbor]:
-                is_leaf = False
                 gen_dfs(neighbor)
-        if not is_leaf:
-            dfs_traversal.append(node)
+            if dfs_traversal[len(dfs_traversal) - 1] != node:
+                dfs_traversal.append(node)
+
     gen_dfs(starting_car_location)
+
+    print(dfs_traversal)
 
     # Saves indices of visited locations.
     visited = {}
@@ -153,6 +157,8 @@ def compute_drive_cost(G, location_loop):
     for i in range(len(location_loop) - 1):
         source = location_loop[i]
         dest = location_loop[i + 1]
+        # print('s: ' + source)
+        # print('d: ' + dest)
         cost += (2.0 / 3.0) * (G[source][dest]['weight'])
     return cost
 

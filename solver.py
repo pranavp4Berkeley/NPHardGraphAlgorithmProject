@@ -111,7 +111,9 @@ def metric_TSP_solver(G, starting_car_location, list_of_homes):
                 for loc in location_loop:
                     if loc in list_of_homes:
                         locations.append(loc) # The final tour should include all homes in the location loop.
-
+    print(len(locations))
+    print(locations)
+    print(dropoff_map)
     tour = find_tour(G, starting_car_location, locations)
     return tour, dropoff_map
 

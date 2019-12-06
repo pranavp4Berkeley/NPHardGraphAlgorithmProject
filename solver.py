@@ -43,8 +43,8 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     location_to_index = dict(zip(list_of_locations, G.nodes()))
     newG = nx.relabel_nodes(G, index_to_location)
 
-    tour, dropoff_map = metric_TSP_solver(newG, starting_car_location, list_of_homes[:], list_of_homes[:])
-    #tour, dropoff_map = simplified_metric_TSP_solver(G, starting_car_location, list_of_homes[:])
+    #tour, dropoff_map = metric_TSP_solver(newG, starting_car_location, list_of_homes[:], list_of_homes[:])
+    tour, dropoff_map = simplified_metric_TSP_solver(newG, starting_car_location, list_of_homes[:])
 
     indexed_tour = [location_to_index[loc] for loc in tour]
 
@@ -57,29 +57,62 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
 
 def simplified_metric_TSP_solver(G, starting_car_location, list_of_homes):
     T = nx.minimum_spanning_tree(G)
-    dropoff_locations, dropped_homes, dropoff_loc_to_homes = find_dropoff_locations(T, starting_car_location, list_of_homes, G)
-    # Need to visit all dropoff locations and TA homes that were not included in a dropoff.
+    dropoff_locations, dropoff_loc_to_homes = find_dropoff_locations(T, starting_car_location, list_of_homes, G)
+    # Checks if one dropoff location supersedes another.
+    replaced_dropoff_locations = []
+    for i in range(len(dropoff_locations)):
+        for j in range(i + 1, len(dropoff_locations)):
+            locA = dropoff_locations[i]
+            locB = dropoff_locations[j]
+            homes_dropped_off_A = dropoff_loc_to_homes[locA]
+            homes_dropped_off_B = dropoff_loc_to_homes[locB]
+            if set(homes_dropped_off_A).issuperset(set(homes_dropped_off_B)):
+                if locB not in replaced_dropoff_locations:
+                    replaced_dropoff_locations.append(locB)
+
+    # print(dropoff_locations)
+    # print(replaced_dropoff_locations)
+    # Remove superseded dropoff locations.
+    for location in replaced_dropoff_locations:
+        dropoff_locations.remove(location)
+        del dropoff_loc_to_homes[location]
+
+    # Store all the homes dropped off indirectly.
+    dropped_homes = []
+    for location in dropoff_locations:
+        for home in dropoff_loc_to_homes[location]:
+            dropped_homes.append(home)
+
+    # Locations car must visit include dropoff locations and homes that need direct door dropoff.
     locations_to_visit = dropoff_locations + list_of_homes
     for location in locations_to_visit:
         if location in dropped_homes:
             locations_to_visit.remove(location)
-    # Find a tour that visits all necessary locations.
-    tour = find_tour(G, starting_car_location, locations_to_visit)
-    # Construct correct dropoff dict.
-    dropoff_dict = {}
-    for location in locations_to_visit:
-        if location in dropoff_loc_to_homes:
-            dropoff_dict[location] = dropoff_loc_to_homes[location]
 
-    return tour, dropoff_dict
+    # Finding homes that need direct door dropoff.
+    direct_homes = []
+    for home in list_of_homes:
+        if home not in dropped_homes:
+            direct_homes.append(home)
+
+    # Updating dropoff map to include direct door dropoff homes.
+    for home in direct_homes:
+        if home not in dropoff_loc_to_homes.keys():
+            dropoff_loc_to_homes[home] = [home]
+
+    tour = find_tour(G, starting_car_location, dropoff_loc_to_homes.keys())
+
+    # print(dropoff_loc_to_homes)
+    return tour, dropoff_loc_to_homes
 
 # Traverses the entire MST, computing dropoff locations.
 def find_dropoff_locations(T, starting_car_location, list_of_homes, G):
     stack = []
     stack.append(starting_car_location)
     visited = {}
+    for node in T.nodes:
+        visited[node] = False
     dropoff_locations = []
-    dropped_homes = []
     dropoff_loc_to_homes = {}
     while len(stack) > 0:
         node = stack.pop()
@@ -88,13 +121,13 @@ def find_dropoff_locations(T, starting_car_location, list_of_homes, G):
         dropoff_cost, subtree_homes = root_dropoff_cost(T, node, list_of_homes, G, copy.deepcopy(visited))
         drive_cost = root_drive_cost(T, node, list_of_homes, G, copy.deepcopy(visited))
         if 0 < dropoff_cost and dropoff_cost < drive_cost:
-            dropoff_locations.append(node)
-            dropped_homes += subtree_homes
-            dropoff_loc_to_homes[node] = subtree_homes
+            dropoff_locations.append(node) # Classify node as a dropoff location.
+            dropoff_loc_to_homes[node] = subtree_homes # Build the dropoff map.
+
         for neighbor in T.neighbors(node):
             if not visited[neighbor]:
                 stack.append(neighbor)
-    return dropoff_locations, dropped_homes, dropoff_loc_to_homes
+    return dropoff_locations, dropoff_loc_to_homes
 
 
 # Returns a list of all TA homes contained in the subtree rooted at starting_location.
@@ -113,18 +146,18 @@ def find_subtree_homes(T, starting_location, list_of_homes, visited):
     return subtree_homes
 
 # Calculates cost of dropping off all the TA's whose homes are in the subtree rooted at starting_location.
-def root_dropoff_cost(T, starting_location, list_of_homes, G, visited):
-    subtree_homes = find_subtree_homes(T, starting_location, list_of_homes, visited)
+def root_dropoff_cost(T, starting_car_location, list_of_homes, G, visited):
+    subtree_homes = find_subtree_homes(T, starting_car_location, list_of_homes, visited)
     dropoff_cost = 0
     for home in subtree_homes:
-        walk_distance, _ = nx.single_source_dijkstra(G, source=starting_location, target=node, cutoff=None, weight='weight')
+        walk_distance, _ = nx.single_source_dijkstra(G, source=starting_car_location, target=home, cutoff=None, weight='weight')
         dropoff_cost += walk_distance
     return dropoff_cost, subtree_homes
 
 # Calculates the cost of a tour that visits all TA homes contained in the subtree rooted at starting_location.
 # NOTE: not guaranteed to be min cost tour, but pretty decent heuristic.
-def root_drive_cost(T, starting_location, list_of_homes, G, visited):
-    subtree_homes = find_subtree_homes(T, starting_location, list_of_homes, visited)
+def root_drive_cost(T, starting_car_location, list_of_homes, G, visited):
+    subtree_homes = find_subtree_homes(T, starting_car_location, list_of_homes, visited)
     drive_tour = find_tour(G, starting_car_location, subtree_homes)
     driving_cost = compute_drive_cost(G, drive_tour)
     return driving_cost
@@ -339,7 +372,7 @@ if __name__=="__main__":
     parser.add_argument('output_directory', type=str, nargs='?', default='.', help='The path to the directory where the output should be written')
     parser.add_argument('params', nargs=argparse.REMAINDER, help='Extra arguments passed in')
     args = parser.parse_args()
-    output_directory = args.output_directory
+    output_directory = args.output_directory + '/outputs/'
     if args.all:
         input_directory = args.input
         solve_all(input_directory, output_directory, params=args.params)

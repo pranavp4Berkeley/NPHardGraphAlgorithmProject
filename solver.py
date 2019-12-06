@@ -33,15 +33,12 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
         NOTE: both outputs should be in terms of indices not the names of the locations themselves
     """
 
-    # Reformat the adjacency matrix
-    # unscaled_G = adj_mat_to_graph(adjacency_matrix)
-    # upscale_matrix(adjacency_matrix)
-    # print(adjacency_matrix)
-    G, message = adjacency_matrix_to_graph(adjacency_matrix)
-    #drawGraph(G)
+    G, _ = adjacency_matrix_to_graph(adjacency_matrix)
+
     index_to_location = dict(zip(G.nodes(), list_of_locations))
     location_to_index = dict(zip(list_of_locations, G.nodes()))
     newG = nx.relabel_nodes(G, index_to_location)
+    # drawGraph(G)
 
     tour, dropoff_map = metric_TSP_solver(newG, starting_car_location, list_of_homes[:], list_of_homes[:])
 
@@ -54,12 +51,238 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     print(cost_of_solution(G, indexed_tour, indexed_dropoff_map))
     return indexed_tour, indexed_dropoff_map
 
+####### SHITTINESS
+
+def acceptance_probability(candidate_weight, curr_weight, temp):
+    return math.exp(-abs(candidate_weight - curr_weight) / temp)
+
+def accept(candidate_weight, curr_weight, temp):
+    if candidate_weight < curr_weight:
+        return 0
+    else:
+        if random.random() < acceptance_probability(candidate_weight, curr_weight, temp):
+            return 1
+    return 2
+
+def shitty_solver(G, starting_car_location, main_list_of_super_nodes, valid_drop_off_map):
+    temp = 0.01
+    stopping_temp = 1e-6
+    alpha = 0.999999
+    stopping_iter = 1e6
+    swap_prob = 1
+    iteration = 1
+
+    all_shortest_paths = nx.shortest_path(G)
+    shortest_lengths = nx.floyd_warshall(G)
+
+    list_of_super_nodes = main_list_of_super_nodes[:]
+
+    if starting_car_location in list_of_super_nodes:
+        list_of_super_nodes.pop(starting_car_location)
+
+    best_tour = list_of_super_nodes[:]
+    best_cost = float('inf')
+
+    curr_tour = list_of_super_nodes[:]
+    curr_cost = float('inf')
+
+    while temp >= stopping_temp and iteration < stopping_iter:
+        prob = random.random()
+
+        new_version = curr_tour[:]
+        if prob < swap_prob:
+            first_random = random.randint(0, len(new_version)-1)
+            second_random = random.randint(0, len(new_version)-1)
+            new_version[first_random], new_version[second_random] = new_version[second_random], new_version[first_random]
+        
+        new_version_cost = shitty_cost_calculator(new_version, starting_car_location, shortest_lengths)
+        acceptance = accept(new_version_cost, curr_cost, temp)
+
+        if acceptance <= 1:
+            curr_cost = new_version_cost
+            curr_tour = list(new_version)
+        if acceptance == 0:
+            if new_version_cost < best_cost:
+                best_cost = new_version_cost
+                best_tour = list(new_version)
+        
+        temp *= alpha
+        iteration += 1
+    
+    final_tour = shitty_tour_calculator(best_tour, starting_car_location, all_shortest_paths)
+    return final_tour, valid_drop_off_map
+
+def shitty_cost_calculator(tour_nodes, starting_car_location, shortest_lengths):
+    start_to_first = shortest_lengths[starting_car_location][tour_nodes[0]]["weight"]
+    last_to_start = shortest_lengths[tour_nodes[len(tour_nodes) - 1]][starting_car_location]["weight"]
+    intermediaries = sum([shortest_lengths[tour_nodes[i]][tour_nodes[i+1]]["weight"] for i in range(len(tour_nodes) - 1)])
+    return start_to_first + intermediaries + last_to_start
+    #  tour_nodes[i]tour_nodes[i+1] for i in range(len(tour_nodes) + 1)])
+
+def shitty_tour_calculator(tour_nodes, starting_car_location, shortest_paths):
+    main_tour = [starting_car_location]
+    main_tour.extend(shortest_paths[starting_car_location][tour_nodes[0]][1:])
+    for i in range(len(tour_nodes) - 1):
+        current_addition = shortest_paths[tour_nodes[i]][tour_nodes[i+1]]
+        current_addition = current_addition[1:]
+        main_tour.extend(current_addition)
+    main_tour.extend(shortest_paths[len(tour_nodes)-1][starting_car_location][1:])
+    return main_tour
+
+####### SHITTINESS
+
+####### OLD VERSION
+
+def metric_TSP_solver(G, starting_car_location, list_of_homes, unchanged_list_of_homes):
+    T = nx.minimum_spanning_tree(G)
+
+    # Generates a DFS call sequence.
+    marked = {}
+    for node in G.nodes:
+        marked[node] = False
+    dfs_traversal = []
+
+    def gen_dfs(node):
+        dfs_traversal.append(node)
+        marked[node] = True
+        for neighbor in T.neighbors(node):
+            if not marked[neighbor]:
+                gen_dfs(neighbor)
+            if dfs_traversal[len(dfs_traversal) - 1] != node:
+                dfs_traversal.append(node)
+
+    gen_dfs(starting_car_location)
+
+    # Saves indices of visited locations.
+    visited = {}
+    # List of locations the car must visit.
+    locations = []
+    # Maps locations to the homes of the TAs who were dropped off at the location.
+    dropoff_map = {}
+
+    super_nodes = []
+    super_node_costs = {}
+    new_tour = []
+
+    # print("DFS: ", dfs_traversal)
+
+    for i in range(len(dfs_traversal)):
+        node = dfs_traversal[i]
+
+        if node not in visited: # Visiting a location for the first time.
+            visited[node] = i
+            new_tour.append(node)
+            if node in unchanged_list_of_homes: # If the node is a home, we must visit it in the final tour.
+                locations.append(node)
+        else:
+            start = visited[node]
+            end = i + 1
+            location_loop = dfs_traversal[start:end] # [start_name ... start_name]
+
+            drive_cost = old_compute_drive_cost(G, location_loop, super_nodes, super_node_costs)
+            dropoff_cost, dropped_homes = old_compute_dropoff_cost(G, location_loop, unchanged_list_of_homes, dropoff_map)
+            # print("Current location loop: ", location_loop)
+            # print("Dropoff cost: {0}, Drive cost: {1}".format(dropoff_cost, drive_cost))
+            # If it's better to drop all the TAs living withing the loop at the start than to drive the entire loop.
+            if (dropoff_cost < drive_cost and dropoff_cost > 0):
+
+                for home in dropped_homes:
+                    # if home in list_of_homes: # Not sure if this is necessary.
+                    #     list_of_homes.remove(home)
+                    if home in locations:
+                        locations.remove(home)
+                    # Also removing super dropoff locations within the location loop.
+                    if home in dropoff_map:
+                        del dropoff_map[home]
+                
+                for location in location_loop:
+                    if location != dfs_traversal[start]:
+                        if location in dropoff_map:
+                            del dropoff_map[location]
+                
+                for i in range(start, end):
+                    new_tour.pop()
+
+                dfs_traversal[start:end] = [dfs_traversal[start] for i in range(len(dfs_traversal[start:end]))]
+
+                dropoff_map[node] = dropped_homes # Storing for output file.
+                # changing_map[node] = dropped_homes
+                locations.append(node) # The final tour must include this dropoff location.
+                # list_of_homes.append(node) # Classifying the dropoff location as a pseudo home.
+                super_nodes.append(node)
+                super_node_costs[node] = dropoff_cost
+
+            else: # Else, it's better to drive the loop. Update the index of visited location.
+                if(dropoff_cost <= 0):
+                    for loc in location_loop[1:len(location_loop)+1]:
+                        new_tour.pop()
+                    # add the path
+                else:
+                    pass
+                    # don't include path
+                visited[node] = i
+                for loc in location_loop:
+                    new_tour.append(loc)
+                    if loc in list_of_homes:
+                        locations.append(loc) # The final tour should include all homes in the location loop.
+            # print("Costs for supers: ", super_node_costs)
+            # print()
+            # # print("New Tour",new_tour)
+            # print("Following drop off map:", dropoff_map)
+
+
+    tour = find_tour(G, starting_car_location, dropoff_map.keys())
+    # print("New Tour: ", new_tour)
+    return tour, dropoff_map
+
+# Calculates the cost of driving the entire loop.
+def old_compute_drive_cost(G, location_loop, super_nodes, super_node_costs):
+    cost = 0
+    for i in range(len(location_loop) - 1):
+        source = location_loop[i]
+        dest = location_loop[i + 1]
+        if(source == dest):
+            continue
+        cost += (2.0 / 3.0) * (G[source][dest]['weight'])
+        # print(sum[super_node_costs[i] for i in super_nodes if i in location_loop[1:len(location_loop)-1]])
+    set_loop = set(location_loop)
+    # print("cost before adding super node: ", cost)
+    # print("super node costs: ", [super_node_costs[i] for i in set_loop if i in super_nodes])
+    total = cost + sum([super_node_costs[i] for i in set_loop if i in super_nodes])
+    return total
+
+# This returns the total cost of leaving the people at this location
+# The dropoff map includes each the current location if it is a home
+def old_compute_dropoff_cost(G, location_loop, unchanged_list_of_homes, dropoff_map):
+    cost = 0
+    source = location_loop[0]
+    location_loop = set(location_loop[1:len(location_loop)- 1])
+
+    dropped_homes = []
+    for node in location_loop:
+        if node in unchanged_list_of_homes and not node in dropoff_map:
+            walk_distance, _ = nx.single_source_dijkstra(G, source=source, target=node, cutoff=None, weight='weight')
+            cost += walk_distance
+            dropped_homes.append(node)
+        if node in dropoff_map:
+            for sub_node in dropoff_map[node]:
+                walk_distance, _ = nx.single_source_dijkstra(G, source=source, target=sub_node, cutoff=None, weight='weight')
+                cost += walk_distance
+                dropped_homes.append(sub_node)
+    if source in unchanged_list_of_homes:
+        dropped_homes.append(source)
+    return cost, dropped_homes
+
+####### OLD VERSION
+
+####### NEW VERSION
+
 def simplified_metric_TSP_solver(G, starting_car_location, list_of_homes):
     T = nx.minimum_spanning_tree(G)
 
 def find_dropoff_locations(T, starting_car_location, list_of_homes, G):
     stack = []
-    stack.append(starting_location)
+    stack.append(starting_car_location)
     visited = {}
     dropoff_locations = []
     dropped_homes = []
@@ -75,7 +298,6 @@ def find_dropoff_locations(T, starting_car_location, list_of_homes, G):
             if not visited[neighbor]:
                 stack.append(neighbor)
     return dropoff_locations, dropped_homes
-
 
 # Returns a list of all TA homes contained in the subtree rooted at starting_location.
 def find_subtree_homes(T, starting_location, list_of_homes, visited):
@@ -102,89 +324,11 @@ def root_dropoff_cost(T, starting_location, list_of_homes, G, visited):
     return dropoff_cost, subtree_homes
 
 # Calculates the cost of a tour that visits all TA homes contained in the subtree rooted at starting_location.
-# NOTE: not guaranteed to be min cost tour, but pretty decent heuristic.
 def root_drive_cost(T, starting_location, list_of_homes, G, visited):
     subtree_homes = find_subtree_homes(T, starting_location, list_of_homes, visited)
-    drive_tour = find_tour(G, starting_car_location, subtree_homes)
+    drive_tour = find_tour(G, starting_location, subtree_homes)
     driving_cost = compute_drive_cost(G, drive_tour)
     return driving_cost
-
-def metric_TSP_solver(G, starting_car_location, list_of_homes):
-    T = nx.minimum_spanning_tree(G)
-
-    # Generates a DFS call sequence.
-    marked = {}
-    for node in G.nodes:
-        marked[node] = False
-    dfs_traversal = []
-
-    def gen_dfs(node):
-        dfs_traversal.append(node)
-        marked[node] = True
-        for neighbor in T.neighbors(node):
-            if not marked[neighbor]:
-                gen_dfs(neighbor)
-            if dfs_traversal[len(dfs_traversal) - 1] != node:
-                dfs_traversal.append(node)
-
-    gen_dfs(starting_car_location)
-
-    # print(dfs_traversal)
-
-    # Saves indices of visited locations.
-    visited = {}
-    # List of locations the car must visit.
-    locations = []
-    # Maps locations to the homes of the TAs who were dropped off at the location.
-    dropoff_map = {}
-    for i in range(len(dfs_traversal)):
-        node = dfs_traversal[i]
-        if node not in visited: # Visiting a location for the first time.
-            visited[node] = i
-            if node in list_of_homes: # If the node is a home, we must visit it in the final tour.
-                locations.append(node)
-        else: # We have arrived at a location loop.
-            start = visited[node]
-            end = i + 1
-            location_loop = dfs_traversal[start:end]
-            drive_cost = compute_drive_cost(G, location_loop)
-            dropoff_cost, dropped_homes = compute_dropoff_cost(G, location_loop, list_of_homes, unchanged_list_of_homes)
-
-            # If it's better to drop all the TAs living withing the loop at the start than to drive the entire loop.
-            if (dropoff_cost < drive_cost and dropoff_cost > 0):
-
-                # Removing homes of the TAs that were dropped off.
-                overall_dropped_locations = []
-
-                for home in dropped_homes:
-                    if home in list_of_homes: # Not sure if this is necessary.
-                        if home in unchanged_list_of_homes:
-                            overall_dropped_locations.append(home)
-                        list_of_homes.remove(home)
-
-                    if home in locations:
-                        locations.remove(home)
-                    # Also removing super dropoff locations within the location loop.
-                    if home in dropoff_map:
-                        overall_dropped_locations.extend(dropoff_map[home])
-                        del dropoff_map[home]
-
-                dropoff_map[node] = overall_dropped_locations # Storing for output file.
-                locations.append(node) # The final tour must include this dropoff location.
-                list_of_homes.append(node) # Classifying the dropoff location as a pseudo home.
-
-            else: # Else, it's better to drive the loop. Update the index of visited location.
-                visited[node] = i
-                for loc in location_loop:
-                    if loc in list_of_homes:
-                        locations.append(loc) # The final tour should include all homes in the location loop.
-
-        # print(dropoff_map)
-    # print(len(locations))
-    # print(locations)
-    # print(dropoff_map)
-    tour = find_tour(G, starting_car_location, locations)
-    return tour, dropoff_map
 
 def find_tour(G, starting_car_location, locations):
     tour = [] # Stores the path the car takes.
@@ -221,29 +365,7 @@ def find_tour(G, starting_car_location, locations):
 def has_not_visited_all_locations(visited):
     return False in visited.values()
 
-# Calculates the cost of driving the entire loop.
-def compute_drive_cost(G, location_loop):
-    cost = 0
-    for i in range(len(location_loop) - 1):
-        source = location_loop[i]
-        dest = location_loop[i + 1]
-        # print('s: ' + source)
-        # print('d: ' + dest)
-        cost += (2.0 / 3.0) * (G[source][dest]['weight'])
-    return cost
-
-# Calculates the cost of dropping off all TAs who live within the loop at the start.
-def compute_dropoff_cost(G, location_loop, list_of_homes, main_list_of_homes):
-    cost = 0
-    source = location_loop[0]
-    dropped_homes = []
-    for node in location_loop:
-        if node in main_list_of_homes:
-            walk_distance, _ = nx.single_source_dijkstra(G, source=source, target=node, cutoff=None, weight='weight')
-            cost += walk_distance
-            dropped_homes.append(node)
-    return cost, dropped_homes
-
+####### NEW VERSION
 
 """
 ======================================================================

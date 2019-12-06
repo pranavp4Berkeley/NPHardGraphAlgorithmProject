@@ -40,7 +40,8 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     newG = nx.relabel_nodes(G, index_to_location)
     # drawGraph(G)
 
-    tour, dropoff_map = metric_TSP_solver(newG, starting_car_location, list_of_homes[:], list_of_homes[:])
+    #tour, dropoff_map = metric_TSP_solver(newG, starting_car_location, list_of_homes[:], list_of_homes[:])
+    tour, dropoff_map = simplified_metric_TSP_solver(newG, starting_car_location, list_of_homes[:])
 
     indexed_tour = [location_to_index[loc] for loc in tour]
 
@@ -65,15 +66,17 @@ def accept(candidate_weight, curr_weight, temp):
     return 2
 
 def shitty_solver(G, starting_car_location, main_list_of_super_nodes, valid_drop_off_map):
-    temp = 0.01
-    stopping_temp = 1e-6
+    temp = 1000
+    stopping_temp = 1e-3
     alpha = 0.999999
-    stopping_iter = 1e6
+    stopping_iter = 1e7
     swap_prob = 1
     iteration = 1
 
     all_shortest_paths = nx.shortest_path(G)
-    shortest_lengths = nx.floyd_warshall(G)
+    shortest_lengths = dict(nx.floyd_warshall(G))
+
+    # print(shortest_lengths)
 
     list_of_super_nodes = main_list_of_super_nodes[:]
 
@@ -96,6 +99,8 @@ def shitty_solver(G, starting_car_location, main_list_of_super_nodes, valid_drop
             new_version[first_random], new_version[second_random] = new_version[second_random], new_version[first_random]
         
         new_version_cost = shitty_cost_calculator(new_version, starting_car_location, shortest_lengths)
+        # if(new_version_cost < 32.0):
+            # print("new version cost: ", new_version_cost)
         acceptance = accept(new_version_cost, curr_cost, temp)
 
         if acceptance <= 1:
@@ -105,17 +110,17 @@ def shitty_solver(G, starting_car_location, main_list_of_super_nodes, valid_drop
             if new_version_cost < best_cost:
                 best_cost = new_version_cost
                 best_tour = list(new_version)
-        
+        # print("best cost: ", best_cost)
         temp *= alpha
         iteration += 1
     
     final_tour = shitty_tour_calculator(best_tour, starting_car_location, all_shortest_paths)
-    return final_tour, valid_drop_off_map
+    return final_tour
 
 def shitty_cost_calculator(tour_nodes, starting_car_location, shortest_lengths):
-    start_to_first = shortest_lengths[starting_car_location][tour_nodes[0]]["weight"]
-    last_to_start = shortest_lengths[tour_nodes[len(tour_nodes) - 1]][starting_car_location]["weight"]
-    intermediaries = sum([shortest_lengths[tour_nodes[i]][tour_nodes[i+1]]["weight"] for i in range(len(tour_nodes) - 1)])
+    start_to_first = shortest_lengths[starting_car_location][tour_nodes[0]]
+    last_to_start = shortest_lengths[tour_nodes[len(tour_nodes) - 1]][starting_car_location]
+    intermediaries = sum([shortest_lengths[tour_nodes[i]][tour_nodes[i+1]] for i in range(len(tour_nodes) - 1)])
     return start_to_first + intermediaries + last_to_start
     #  tour_nodes[i]tour_nodes[i+1] for i in range(len(tour_nodes) + 1)])
 
@@ -126,12 +131,124 @@ def shitty_tour_calculator(tour_nodes, starting_car_location, shortest_paths):
         current_addition = shortest_paths[tour_nodes[i]][tour_nodes[i+1]]
         current_addition = current_addition[1:]
         main_tour.extend(current_addition)
-    main_tour.extend(shortest_paths[len(tour_nodes)-1][starting_car_location][1:])
+    main_tour.extend(shortest_paths[tour_nodes[len(tour_nodes)-1]][starting_car_location][1:])
     return main_tour
 
 ####### SHITTINESS
 
 ####### OLD VERSION
+
+# Optimization ideas:
+# 1. find_tour can examimine more tours
+# 2. use some commercial algo for find_tour
+
+def simplified_metric_TSP_solver(G, starting_car_location, list_of_homes):
+    T = nx.minimum_spanning_tree(G)
+    dropoff_locations, dropoff_loc_to_homes = find_dropoff_locations(T, starting_car_location, list_of_homes, G)
+    # Checks if one dropoff location supersedes another.
+    replaced_dropoff_locations = []
+    for i in range(len(dropoff_locations)):
+        for j in range(i + 1, len(dropoff_locations)):
+            locA = dropoff_locations[i]
+            locB = dropoff_locations[j]
+            homes_dropped_off_A = dropoff_loc_to_homes[locA]
+            homes_dropped_off_B = dropoff_loc_to_homes[locB]
+            if set(homes_dropped_off_A).issuperset(set(homes_dropped_off_B)):
+                if locB not in replaced_dropoff_locations:
+                    replaced_dropoff_locations.append(locB)
+
+    # print(dropoff_locations)
+    # print(replaced_dropoff_locations)
+    # Remove superseded dropoff locations.
+    for location in replaced_dropoff_locations:
+        dropoff_locations.remove(location)
+        del dropoff_loc_to_homes[location]
+
+    # Store all the homes dropped off indirectly.
+    dropped_homes = []
+    for location in dropoff_locations:
+        for home in dropoff_loc_to_homes[location]:
+            dropped_homes.append(home)
+
+    # Locations car must visit include dropoff locations and homes that need direct door dropoff.
+    # locations_to_visit = dropoff_locations + list_of_homes
+    # for location in locations_to_visit:
+    #     if location in dropped_homes:
+    #         locations_to_visit.remove(location)
+
+    # Finding homes that need direct door dropoff.
+    direct_homes = []
+    for home in list_of_homes:
+        if home not in dropped_homes:
+            direct_homes.append(home)
+
+    # Updating dropoff map to include direct door dropoff homes.
+    for home in direct_homes:
+        if home not in dropoff_loc_to_homes.keys():
+            dropoff_loc_to_homes[home] = [home]
+
+    # tour = find_tour(G, starting_car_location, dropoff_loc_to_homes.keys())
+    # tour = find_better_tour(G, starting_car_location, dropoff_loc_to_homes.keys())
+    tour = shitty_solver(G, starting_car_location, list(dropoff_loc_to_homes.keys()), dropoff_loc_to_homes)
+
+    # print(dropoff_loc_to_homes)
+    return tour, dropoff_loc_to_homes
+
+# Traverses the entire MST, computing dropoff locations.
+def find_dropoff_locations(T, starting_car_location, list_of_homes, G):
+    stack = []
+    stack.append(starting_car_location)
+    visited = {}
+    for node in T.nodes:
+        visited[node] = False
+    dropoff_locations = []
+    dropoff_loc_to_homes = {}
+    while len(stack) > 0:
+        node = stack.pop()
+        visited[node] = True
+        # Deep copy of visited dict needed to ensure that we only traverse the subtree.
+        dropoff_cost, subtree_homes = root_dropoff_cost(T, node, list_of_homes, G, copy.deepcopy(visited))
+        drive_cost = root_drive_cost(T, node, list_of_homes, G, copy.deepcopy(visited))
+        if 0 < dropoff_cost and dropoff_cost < drive_cost:
+            dropoff_locations.append(node) # Classify node as a dropoff location.
+            dropoff_loc_to_homes[node] = subtree_homes # Build the dropoff map.
+
+        for neighbor in T.neighbors(node):
+            if not visited[neighbor]:
+                stack.append(neighbor)
+    return dropoff_locations, dropoff_loc_to_homes
+
+# Returns a list of all TA homes contained in the subtree rooted at starting_location.
+def find_subtree_homes(T, starting_location, list_of_homes, visited):
+    subtree_homes = []
+    stack = []
+    stack.append(starting_location)
+    while len(stack) > 0:
+        node = stack.pop()
+        visited[node] = True
+        if node in list_of_homes:
+            subtree_homes.append(node)
+        for neighbor in T.neighbors(node):
+            if not visited[neighbor]:
+                stack.append(neighbor)
+    return subtree_homes
+
+# Calculates cost of dropping off all the TA's whose homes are in the subtree rooted at starting_location.
+def root_dropoff_cost(T, starting_car_location, list_of_homes, G, visited):
+    subtree_homes = find_subtree_homes(T, starting_car_location, list_of_homes, visited)
+    dropoff_cost = 0
+    for home in subtree_homes:
+        walk_distance, _ = nx.single_source_dijkstra(G, source=starting_car_location, target=home, cutoff=None, weight='weight')
+        dropoff_cost += walk_distance
+    return dropoff_cost, subtree_homes
+
+# Calculates the cost of a tour that visits all TA homes contained in the subtree rooted at starting_location.
+# NOTE: not guaranteed to be min cost tour, but pretty decent heuristic.
+def root_drive_cost(T, starting_car_location, list_of_homes, G, visited):
+    subtree_homes = find_subtree_homes(T, starting_car_location, list_of_homes, visited)
+    drive_tour = find_tour(G, starting_car_location, subtree_homes)
+    driving_cost = compute_drive_cost(G, drive_tour)
+    return driving_cost
 
 def metric_TSP_solver(G, starting_car_location, list_of_homes, unchanged_list_of_homes):
     T = nx.minimum_spanning_tree(G)
@@ -277,58 +394,56 @@ def old_compute_dropoff_cost(G, location_loop, unchanged_list_of_homes, dropoff_
 
 ####### NEW VERSION
 
-def simplified_metric_TSP_solver(G, starting_car_location, list_of_homes):
-    T = nx.minimum_spanning_tree(G)
-
-def find_dropoff_locations(T, starting_car_location, list_of_homes, G):
-    stack = []
-    stack.append(starting_car_location)
-    visited = {}
-    dropoff_locations = []
-    dropped_homes = []
-    while len(stack) > 0:
-        node = stack.pop()
-        visited[node] = True
-        dropoff_cost, subtree_homes = root_dropoff_cost(T, node, list_of_homes, G, copy.deepcopy(visited))
-        drive_cost = root_drive_cost(T, node, list_of_homes, G, copy.deepcopy(visited))
-        if 0 < dropoff_cost and dropoff_cost < drive_cost:
-            dropoff_locations.append(node)
-            dropped_homes += subtree_homes
-        for neighbor in T.neighbors(node):
-            if not visited[neighbor]:
-                stack.append(neighbor)
-    return dropoff_locations, dropped_homes
-
-# Returns a list of all TA homes contained in the subtree rooted at starting_location.
-def find_subtree_homes(T, starting_location, list_of_homes, visited):
-    subtree_homes = []
-    stack = []
-    stack.append(starting_location)
-    while len(stack) > 0:
-        node = stack.pop()
-        visited[node] = True
-        if node in list_of_homes:
-            subtree_homes.append(node)
-        for neighbor in T.neighbors(node):
-            if not visited[neighbor]:
-                stack.append(neighbor)
-    return subtree_homes
-
 # Calculates cost of dropping off all the TA's whose homes are in the subtree rooted at starting_location.
-def root_dropoff_cost(T, starting_location, list_of_homes, G, visited):
-    subtree_homes = find_subtree_homes(T, starting_location, list_of_homes, visited)
-    dropoff_cost = 0
-    for home in subtree_homes:
-        walk_distance, _ = nx.single_source_dijkstra(G, source=starting_location, target=node, cutoff=None, weight='weight')
-        dropoff_cost += walk_distance
-    return dropoff_cost, subtree_homes
+def find_better_tour(G, starting_car_location, locations):
+    if len(locations) < 3:
+        return find_tour(G, starting_car_location, locations)
 
-# Calculates the cost of a tour that visits all TA homes contained in the subtree rooted at starting_location.
-def root_drive_cost(T, starting_location, list_of_homes, G, visited):
-    subtree_homes = find_subtree_homes(T, starting_location, list_of_homes, visited)
-    drive_tour = find_tour(G, starting_location, subtree_homes)
-    driving_cost = compute_drive_cost(G, drive_tour)
-    return driving_cost
+    tour = []
+    visited = {}
+    for loc in locations:
+        visited[loc] = False
+
+    visited[starting_car_location] = True
+    tour.append(starting_car_location)
+
+    # Store tours and visited map for all second location possibilities.
+    second_loc_to_tour = {}
+    second_loc_to_visited = {}
+    for loc in locations:
+        if not visited[loc]:
+            second_loc_to_tour[loc] = copy.deepcopy(tour)
+            second_loc_to_visited[loc] = copy.deepcopy(visited)
+
+    for second_loc in second_loc_to_tour.keys():
+        current_loc = second_loc
+        while (has_not_visited_all_locations(second_loc_to_visited[second_loc])):
+            path_lengths = nx.single_source_dijkstra_path_length(G, source=current_loc, cutoff=None, weight='weight')
+            closest_loc = None
+            closest_loc_distance = float('inf')
+
+            for loc in locations:
+                if not second_loc_to_visited[second_loc][loc]:
+                    loc_distance = path_lengths[loc]
+                    if (loc_distance < closest_loc_distance):
+                        closest_loc = loc
+                        closest_loc_distance = loc_distance
+
+            chosen_path = nx.dijkstra_path(G, source=current_loc, target=closest_loc, weight='weight')
+            second_loc_to_tour[second_loc] += chosen_path[:(len(chosen_path) - 1)]
+
+            second_loc_to_visited[second_loc][closest_loc] = True
+            current_loc = closest_loc
+
+        return_path = nx.dijkstra_path(G, source=current_loc, target=starting_car_location, weight='weight')
+        second_loc_to_tour[second_loc] += return_path
+
+    # for tour in second_loc_to_tour.values():
+        # print(tour)
+    # print(len(list(second_loc_to_tour.values())))
+    # Pick the best tour
+    best_second_loc_tour = min(second_loc_to_tour.values(), key = lambda tour : compute_drive_cost(G, tour))
+    return best_second_loc_tour
 
 def find_tour(G, starting_car_location, locations):
     tour = [] # Stores the path the car takes.
@@ -366,6 +481,29 @@ def has_not_visited_all_locations(visited):
     return False in visited.values()
 
 ####### NEW VERSION
+# Calculates the cost of driving the entire loop.
+def compute_drive_cost(G, location_loop):
+    cost = 0
+    for i in range(len(location_loop) - 1):
+        source = location_loop[i]
+        dest = location_loop[i + 1]
+        # print('s: ' + source)
+        # print('d: ' + dest)
+        cost += (2.0 / 3.0) * (G[source][dest]['weight'])
+    return cost
+
+# Calculates the cost of dropping off all TAs who live within the loop at the start.
+def compute_dropoff_cost(G, location_loop, list_of_homes, main_list_of_homes):
+    cost = 0
+    source = location_loop[0]
+    dropped_homes = []
+    for node in location_loop:
+        if node in main_list_of_homes:
+            walk_distance, _ = nx.single_source_dijkstra(G, source=source, target=node, cutoff=None, weight='weight')
+            cost += walk_distance
+            dropped_homes.append(node)
+    return cost, dropped_homes
+
 
 """
 ======================================================================
@@ -441,7 +579,7 @@ if __name__=="__main__":
     parser.add_argument('output_directory', type=str, nargs='?', default='.', help='The path to the directory where the output should be written')
     parser.add_argument('params', nargs=argparse.REMAINDER, help='Extra arguments passed in')
     args = parser.parse_args()
-    output_directory = args.output_directory
+    output_directory = args.output_directory + '/outputs/'
     if args.all:
         input_directory = args.input
         solve_all(input_directory, output_directory, params=args.params)

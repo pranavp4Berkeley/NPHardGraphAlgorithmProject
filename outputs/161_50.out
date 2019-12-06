@@ -1,25 +1,19 @@
-start loc1 loc2 loc14 loc23 loc24 loc15 loc19 loc10 loc11 loc20 loc21 loc22 loc5 loc12 loc4 loc13 loc4 loc1 loc16 loc18 loc9 loc8 loc9 loc10 loc17 start loc25 start
-23
-loc23 home15
-loc14 home4
-loc24 home16
-loc15 home5
-loc2
-loc11 home9
-loc10
-loc19 home24
-loc20 home22
-loc18 home7
-loc9
-loc8 home11
-loc22 home13
-loc5 home12
-loc21 home3
-loc12 home20
-loc4 home19
-loc13 home21
-loc16 home8
-loc1 home1
+start loc1 home1 loc1 loc4 home2 loc4 home19 loc4 loc13 loc22 loc5 home12 loc5 loc12 loc11 loc20 loc14 loc15 loc19 loc18 loc9 loc8 home11 loc8 loc9 loc10 loc17 loc16 loc25 start
+17
+loc25 home18 home17
 loc17 home10
-start
-loc25 home18
+loc16 home8
+loc13 home21
+loc12 home20 home3
+loc22 home13
+loc18 home7
+loc20 home22
+loc19 home24 home23 home6
+loc11 home9
+loc15 home5 home16
+loc14 home4 home15 home14
+home1 home1
+home2 home2
+home11 home11
+home12 home12
+home19 home19

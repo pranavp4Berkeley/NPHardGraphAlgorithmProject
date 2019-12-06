@@ -43,7 +43,8 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     location_to_index = dict(zip(list_of_locations, G.nodes()))
     newG = nx.relabel_nodes(G, index_to_location)
 
-    tour, dropoff_map = metric_TSP_solver(newG, starting_car_location, list_of_homes[:], list_of_homes[:])
+    #tour, dropoff_map = metric_TSP_solver(newG, starting_car_location, list_of_homes[:], list_of_homes[:])
+    tour, dropoff_map = simplified_metric_TSP_solver(G, starting_car_location, list_of_homes[:])
 
     indexed_tour = [location_to_index[loc] for loc in tour]
 
@@ -56,25 +57,44 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
 
 def simplified_metric_TSP_solver(G, starting_car_location, list_of_homes):
     T = nx.minimum_spanning_tree(G)
+    dropoff_locations, dropped_homes, dropoff_loc_to_homes = find_dropoff_locations(T, starting_location, list_of_homes, G)
+    # Need to visit all dropoff locations and TA homes that were not included in a dropoff.
+    locations_to_visit = dropoff_locations + list_of_homes
+    for location in locations_to_visit:
+        if location in dropped_homes:
+            locations_to_visit.remove(location)
+    # Find a tour that visits all necessary locations.
+    tour = find_tour(G, starting_car_location, locations_to_visit)
+    # Construct correct dropoff dict.
+    dropoff_dict = {}
+    for location in locations_to_visit:
+        if location in dropoff_loc_to_homes:
+            dropoff_dict[location] = dropoff_loc_to_homes[location]
 
+    return tour, dropoff_dict
+
+# Traverses the entire MST, computing dropoff locations.
 def find_dropoff_locations(T, starting_car_location, list_of_homes, G):
     stack = []
     stack.append(starting_location)
     visited = {}
     dropoff_locations = []
     dropped_homes = []
+    dropoff_loc_to_homes = {}
     while len(stack) > 0:
         node = stack.pop()
         visited[node] = True
+        # Deep copy of visited dict needed to ensure that we only traverse the subtree.
         dropoff_cost, subtree_homes = root_dropoff_cost(T, node, list_of_homes, G, copy.deepcopy(visited))
         drive_cost = root_drive_cost(T, node, list_of_homes, G, copy.deepcopy(visited))
         if 0 < dropoff_cost and dropoff_cost < drive_cost:
             dropoff_locations.append(node)
             dropped_homes += subtree_homes
+            dropoff_loc_to_homes[node] = subtree_homes
         for neighbor in T.neighbors(node):
             if not visited[neighbor]:
                 stack.append(neighbor)
-    return dropoff_locations, dropped_homes
+    return dropoff_locations, dropped_homes, dropoff_loc_to_homes
 
 
 # Returns a list of all TA homes contained in the subtree rooted at starting_location.
@@ -109,7 +129,7 @@ def root_drive_cost(T, starting_location, list_of_homes, G, visited):
     driving_cost = compute_drive_cost(G, drive_tour)
     return driving_cost
 
-def metric_TSP_solver(G, starting_car_location, list_of_homes):
+def metric_TSP_solver(G, starting_car_location, list_of_homes, unchanged_list_of_homes):
     T = nx.minimum_spanning_tree(G)
 
     # Generates a DFS call sequence.

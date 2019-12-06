@@ -41,14 +41,18 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     #drawGraph(G)
     index_to_location = dict(zip(G.nodes(), list_of_locations))
     location_to_index = dict(zip(list_of_locations, G.nodes()))
-    G = nx.relabel_nodes(G, index_to_location)
+    newG = nx.relabel_nodes(G, index_to_location)
 
-    tour, dropoff_map = metric_TSP_solver(G, starting_car_location, list_of_homes)
-    tour = [location_to_index[loc] for loc in tour]
+    tour, dropoff_map = metric_TSP_solver(newG, starting_car_location, list_of_homes[:], list_of_homes[:])
+
+    indexed_tour = [location_to_index[loc] for loc in tour]
+
     indexed_dropoff_map = {}
     for loc in dropoff_map:
         indexed_dropoff_map[location_to_index[loc]] = [location_to_index[home] for home in dropoff_map[loc]]
-    return tour, indexed_dropoff_map
+
+    print(cost_of_solution(G, indexed_tour, indexed_dropoff_map))
+    return indexed_tour, indexed_dropoff_map
 
 def simplified_metric_TSP_solver(G, starting_car_location, list_of_homes):
     T = nx.minimum_spanning_tree(G)
@@ -113,6 +117,7 @@ def metric_TSP_solver(G, starting_car_location, list_of_homes):
     for node in G.nodes:
         marked[node] = False
     dfs_traversal = []
+
     def gen_dfs(node):
         dfs_traversal.append(node)
         marked[node] = True
@@ -124,7 +129,7 @@ def metric_TSP_solver(G, starting_car_location, list_of_homes):
 
     gen_dfs(starting_car_location)
 
-    #print(dfs_traversal)
+    # print(dfs_traversal)
 
     # Saves indices of visited locations.
     visited = {}
@@ -143,24 +148,28 @@ def metric_TSP_solver(G, starting_car_location, list_of_homes):
             end = i + 1
             location_loop = dfs_traversal[start:end]
             drive_cost = compute_drive_cost(G, location_loop)
-            dropoff_cost, dropped_homes = compute_dropoff_cost(G, location_loop, list_of_homes)
+            dropoff_cost, dropped_homes = compute_dropoff_cost(G, location_loop, list_of_homes, unchanged_list_of_homes)
 
             # If it's better to drop all the TAs living withing the loop at the start than to drive the entire loop.
-            if (dropoff_cost < drive_cost):
-                # for loc in location_loop[1:]:
-                #     tour.remove(loc)
+            if (dropoff_cost < drive_cost and dropoff_cost > 0):
 
                 # Removing homes of the TAs that were dropped off.
+                overall_dropped_locations = []
+
                 for home in dropped_homes:
-                    if home in list_of_homes: # Not sure why this is necessary.
+                    if home in list_of_homes: # Not sure if this is necessary.
+                        if home in unchanged_list_of_homes:
+                            overall_dropped_locations.append(home)
                         list_of_homes.remove(home)
-                    # if home in locations:
-                    #     locations.remove(home)
+
+                    if home in locations:
+                        locations.remove(home)
                     # Also removing super dropoff locations within the location loop.
                     if home in dropoff_map:
+                        overall_dropped_locations.extend(dropoff_map[home])
                         del dropoff_map[home]
 
-                dropoff_map[node] = dropped_homes # Storing for output file.
+                dropoff_map[node] = overall_dropped_locations # Storing for output file.
                 locations.append(node) # The final tour must include this dropoff location.
                 list_of_homes.append(node) # Classifying the dropoff location as a pseudo home.
 
@@ -169,9 +178,11 @@ def metric_TSP_solver(G, starting_car_location, list_of_homes):
                 for loc in location_loop:
                     if loc in list_of_homes:
                         locations.append(loc) # The final tour should include all homes in the location loop.
-    #print(len(locations))
-    #print(locations)
-    #print(dropoff_map)
+
+        # print(dropoff_map)
+    # print(len(locations))
+    # print(locations)
+    # print(dropoff_map)
     tour = find_tour(G, starting_car_location, locations)
     return tour, dropoff_map
 
@@ -210,7 +221,6 @@ def find_tour(G, starting_car_location, locations):
 def has_not_visited_all_locations(visited):
     return False in visited.values()
 
-
 # Calculates the cost of driving the entire loop.
 def compute_drive_cost(G, location_loop):
     cost = 0
@@ -223,12 +233,12 @@ def compute_drive_cost(G, location_loop):
     return cost
 
 # Calculates the cost of dropping off all TAs who live within the loop at the start.
-def compute_dropoff_cost(G, location_loop, list_of_homes):
+def compute_dropoff_cost(G, location_loop, list_of_homes, main_list_of_homes):
     cost = 0
     source = location_loop[0]
     dropped_homes = []
     for node in location_loop:
-        if node in list_of_homes:
+        if node in main_list_of_homes:
             walk_distance, _ = nx.single_source_dijkstra(G, source=source, target=node, cutoff=None, weight='weight')
             cost += walk_distance
             dropped_homes.append(node)

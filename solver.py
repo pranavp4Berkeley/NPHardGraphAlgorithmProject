@@ -246,7 +246,8 @@ def root_dropoff_cost(T, starting_car_location, list_of_homes, G, visited):
 # NOTE: not guaranteed to be min cost tour, but pretty decent heuristic.
 def root_drive_cost(T, starting_car_location, list_of_homes, G, visited):
     subtree_homes = find_subtree_homes(T, starting_car_location, list_of_homes, visited)
-    drive_tour = find_tour(G, starting_car_location, subtree_homes)
+    # drive_tour = find_tour(G, starting_car_location, subtree_homes)
+    drive_tour = find_better_tour(G, starting_car_location, subtree_homes)
     driving_cost = compute_drive_cost(G, drive_tour)
     return driving_cost
 
@@ -411,9 +412,12 @@ def find_better_tour(G, starting_car_location, locations):
     second_loc_to_tour = {}
     second_loc_to_visited = {}
     for loc in locations:
-        if not visited[loc]:
+        if not visited[loc] and G.has_edge(starting_car_location, loc):
             second_loc_to_tour[loc] = copy.deepcopy(tour)
             second_loc_to_visited[loc] = copy.deepcopy(visited)
+
+    if not second_loc_to_tour:
+        return find_tour(G, starting_car_location, locations)
 
     for second_loc in second_loc_to_tour.keys():
         current_loc = second_loc

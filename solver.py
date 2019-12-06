@@ -188,8 +188,16 @@ def simplified_metric_TSP_solver(G, starting_car_location, list_of_homes):
             dropoff_loc_to_homes[home] = [home]
 
     # tour = find_tour(G, starting_car_location, dropoff_loc_to_homes.keys())
-    # tour = find_better_tour(G, starting_car_location, dropoff_loc_to_homes.keys())
-    tour = shitty_solver(G, starting_car_location, list(dropoff_loc_to_homes.keys()), dropoff_loc_to_homes)
+    tour_discrete = find_better_tour(G, starting_car_location, dropoff_loc_to_homes.keys())
+    tour_probability = shitty_solver(G, starting_car_location, list(dropoff_loc_to_homes.keys()), dropoff_loc_to_homes)
+    discrete_cost, _ = cost_of_solution(G, tour_discrete, dropoff_loc_to_homes)
+    print("discrete cost: ", discrete_cost)
+    probability_cost, _ = cost_of_solution(G, tour_probability, dropoff_loc_to_homes)
+    print("probability cost: ", probability_cost)
+    if(discrete_cost < probability_cost):
+        tour = tour_discrete
+    else:
+        tour = tour_probability
 
     # print(dropoff_loc_to_homes)
     return tour, dropoff_loc_to_homes
@@ -246,8 +254,8 @@ def root_dropoff_cost(T, starting_car_location, list_of_homes, G, visited):
 # NOTE: not guaranteed to be min cost tour, but pretty decent heuristic.
 def root_drive_cost(T, starting_car_location, list_of_homes, G, visited):
     subtree_homes = find_subtree_homes(T, starting_car_location, list_of_homes, visited)
-    # drive_tour = find_tour(G, starting_car_location, subtree_homes)
-    drive_tour = find_better_tour(G, starting_car_location, subtree_homes)
+    drive_tour = find_tour(G, starting_car_location, subtree_homes)
+    # drive_tour = find_better_tour(G, starting_car_location, subtree_homes)
     driving_cost = compute_drive_cost(G, drive_tour)
     return driving_cost
 

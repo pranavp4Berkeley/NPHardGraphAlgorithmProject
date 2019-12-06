@@ -55,6 +55,10 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     print(cost_of_solution(G, indexed_tour, indexed_dropoff_map))
     return indexed_tour, indexed_dropoff_map
 
+# Optimization ideas:
+# 1. find_tour can examimine more tours
+# 2. use some commercial algo for find_tour
+
 def simplified_metric_TSP_solver(G, starting_car_location, list_of_homes):
     T = nx.minimum_spanning_tree(G)
     dropoff_locations, dropoff_loc_to_homes = find_dropoff_locations(T, starting_car_location, list_of_homes, G)
@@ -84,10 +88,10 @@ def simplified_metric_TSP_solver(G, starting_car_location, list_of_homes):
             dropped_homes.append(home)
 
     # Locations car must visit include dropoff locations and homes that need direct door dropoff.
-    locations_to_visit = dropoff_locations + list_of_homes
-    for location in locations_to_visit:
-        if location in dropped_homes:
-            locations_to_visit.remove(location)
+    # locations_to_visit = dropoff_locations + list_of_homes
+    # for location in locations_to_visit:
+    #     if location in dropped_homes:
+    #         locations_to_visit.remove(location)
 
     # Finding homes that need direct door dropoff.
     direct_homes = []
@@ -101,6 +105,7 @@ def simplified_metric_TSP_solver(G, starting_car_location, list_of_homes):
             dropoff_loc_to_homes[home] = [home]
 
     tour = find_tour(G, starting_car_location, dropoff_loc_to_homes.keys())
+    # tour = find_better_tour(G, starting_car_location, dropoff_loc_to_homes.keys())
 
     # print(dropoff_loc_to_homes)
     return tour, dropoff_loc_to_homes
@@ -239,6 +244,57 @@ def metric_TSP_solver(G, starting_car_location, list_of_homes, unchanged_list_of
     tour = find_tour(G, starting_car_location, locations)
     return tour, dropoff_map
 
+def find_better_tour(G, starting_car_location, locations):
+    if len(locations) < 3:
+        return find_tour(G, starting_car_location, locations)
+
+    tour = []
+    visited = {}
+    for loc in locations:
+        visited[loc] = False
+
+    visited[starting_car_location] = True
+    tour.append(starting_car_location)
+
+    # Store tours and visited map for all second location possibilities.
+    second_loc_to_tour = {}
+    second_loc_to_visited = {}
+    for loc in locations:
+        if not visited[loc]:
+            second_loc_to_tour[loc] = copy.deepcopy(tour)
+            second_loc_to_visited[loc] = copy.deepcopy(visited)
+
+    for second_loc in second_loc_to_tour.keys():
+        current_loc = second_loc
+        while (has_not_visited_all_locations(second_loc_to_visited[second_loc])):
+            path_lengths = nx.single_source_dijkstra_path_length(G, source=current_loc, cutoff=None, weight='weight')
+            closest_loc = None
+            closest_loc_distance = float('inf')
+
+            for loc in locations:
+                if not second_loc_to_visited[second_loc][loc]:
+                    loc_distance = path_lengths[loc]
+                    if (loc_distance < closest_loc_distance):
+                        closest_loc = loc
+                        closest_loc_distance = loc_distance
+
+            chosen_path = nx.dijkstra_path(G, source=current_loc, target=closest_loc, weight='weight')
+            second_loc_to_tour[second_loc] += chosen_path[:(len(chosen_path) - 1)]
+
+            second_loc_to_visited[second_loc][closest_loc] = True
+            current_loc = closest_loc
+
+        return_path = nx.dijkstra_path(G, source=current_loc, target=starting_car_location, weight='weight')
+        second_loc_to_tour[second_loc] += return_path
+
+    for tour in second_loc_to_tour.values():
+        print(tour)
+    # print(len(list(second_loc_to_tour.values())))
+    # Pick the best tour
+    best_second_loc_tour = min(second_loc_to_tour.values(), key = lambda tour : compute_drive_cost(G, tour))
+    return best_second_loc_tour
+
+
 def find_tour(G, starting_car_location, locations):
     tour = [] # Stores the path the car takes.
     current_loc = starting_car_location
@@ -280,8 +336,8 @@ def compute_drive_cost(G, location_loop):
     for i in range(len(location_loop) - 1):
         source = location_loop[i]
         dest = location_loop[i + 1]
-        # print('s: ' + source)
-        # print('d: ' + dest)
+        print('s: ' + source)
+        print('d: ' + dest)
         cost += (2.0 / 3.0) * (G[source][dest]['weight'])
     return cost
 

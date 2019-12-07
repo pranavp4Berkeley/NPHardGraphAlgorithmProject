@@ -54,14 +54,14 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
 
 ####### SHITTINESS
 
-def acceptance_probability(candidate_weight, curr_weight, temp):
-    return math.exp(-abs(candidate_weight - curr_weight) / temp)
+def acceptance_probability(new_weight, curr_weight, temp):
+    return math.exp(-abs(new_weight - curr_weight) / temp)
 
-def accept(candidate_weight, curr_weight, temp):
-    if candidate_weight < curr_weight:
+def accept(new_weight, curr_weight, temp):
+    if new_weight < curr_weight:
         return 0
     else:
-        if random.random() < acceptance_probability(candidate_weight, curr_weight, temp):
+        if random.random() < acceptance_probability(new_weight, curr_weight, temp):
             return 1
     return 2
 
@@ -81,7 +81,7 @@ def shitty_solver(G, starting_car_location, main_list_of_super_nodes, valid_drop
     list_of_super_nodes = main_list_of_super_nodes[:]
 
     if starting_car_location in list_of_super_nodes:
-        list_of_super_nodes.pop(starting_car_location)
+        list_of_super_nodes.remove(starting_car_location)
 
     best_tour = list_of_super_nodes[:]
     best_cost = float('inf')
@@ -188,16 +188,20 @@ def simplified_metric_TSP_solver(G, starting_car_location, list_of_homes):
             dropoff_loc_to_homes[home] = [home]
 
     # tour = find_tour(G, starting_car_location, dropoff_loc_to_homes.keys())
-    tour_discrete = find_better_tour(G, starting_car_location, dropoff_loc_to_homes.keys())
-    tour_probability = shitty_solver(G, starting_car_location, list(dropoff_loc_to_homes.keys()), dropoff_loc_to_homes)
+    tour_discrete = find_tour(G, starting_car_location, dropoff_loc_to_homes.keys())
     discrete_cost, _ = cost_of_solution(G, tour_discrete, dropoff_loc_to_homes)
-    print("discrete cost: ", discrete_cost)
-    probability_cost, _ = cost_of_solution(G, tour_probability, dropoff_loc_to_homes)
-    print("probability cost: ", probability_cost)
-    if(discrete_cost < probability_cost):
-        tour = tour_discrete
-    else:
-        tour = tour_probability
+    # print("discrete cost: ", discrete_cost)
+    # try:
+    #     tour_probability = shitty_solver(G, starting_car_location, list(dropoff_loc_to_homes.keys()), dropoff_loc_to_homes)
+    #     probability_cost, _ = cost_of_solution(G, tour_probability, dropoff_loc_to_homes)
+    #     print("probability cost: ", probability_cost)
+    #     if(discrete_cost < probability_cost):
+    #         tour = tour_discrete
+    #     else:
+    #         tour = tour_probability
+    # except:
+    #     tour = tour_discrete
+    tour = tour_discrete
 
     # print(dropoff_loc_to_homes)
     return tour, dropoff_loc_to_homes
@@ -515,7 +519,6 @@ def compute_dropoff_cost(G, location_loop, list_of_homes, main_list_of_homes):
             cost += walk_distance
             dropped_homes.append(node)
     return cost, dropped_homes
-
 
 """
 ======================================================================
